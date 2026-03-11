@@ -3,6 +3,8 @@
 
 A RISC-V assembler and linker library written in Rust, capable of parsing RISC-V assembly source text and producing ELF output for both executables and shared libraries.
 
+This project used diagram-to-code idea and will need [Rust Macro Internal](https://github.com/NomoLynx/rust_macro_internal) to compile. If you want to view the diagram please install markdown and mermiad viewer in your IDE (e.g. VSCode)
+
 ---
 
 ## Features
