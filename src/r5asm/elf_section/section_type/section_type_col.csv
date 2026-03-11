@@ -1,0 +1,4 @@
+,variant,segment_flag,load_type,code_string
+lookup_load_type,,,out,
+lookup_segment_flag,,out,,
+get_code,,,,out

@@ -1,0 +1,10 @@
+variant,segment_flag,load_type,code_string
+TEXT,0x05,1,.text
+BSS,0x06,1,.bss
+Data,0x06,1,.data
+ReadOnlyData,0x04,1,.rodata
+DYNAMIC,0x06,2,.dynamic
+INTERP,0x04,3,.interp
+PHDR,0x04,6,.phdr
+PHDRSegment,0x04,1,.phdr_segment
+Note,0x04,4,.note
