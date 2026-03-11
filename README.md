@@ -15,7 +15,7 @@ This project used diagram-to-code idea and will need [Rust Macro Internal](https
 - **Pseudo-instruction expansion** — high-level pseudo-instructions are expanded to real machine instructions during a second-round pass.
 - **Compact (C-extension) optimisation** — optionally converts eligible instructions to the 16-bit compressed encoding.
 - **Macro instructions** — user-defined macro instructions are stored in `CodeGenConfiguration` and expanded at assembly time.
-- **Markdown data sections** — `.data` section content can be defined in Markdown tables (`.data.md` files) using the `md_data` module.
+- **Customized data sections** — `.data` section content can be defined in Markdown tables and ini file (`.data.md` files) using the `md_data` module.
 - **Dynamic / shared-library support** — PLT stubs (plt0 / pltn) and ELF dynamic structures are generated for shared-library builds.
 - **External symbol support** — symbols referenced but not defined in the current translation unit are forwarded as external relocations.
 - **C-compatible library** — built as both `rlib` and `cdylib`, allowing the assembler to be called from C/C++ FFI.
