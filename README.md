@@ -113,15 +113,10 @@ let program = parse_asm(src, &mut config).expect("assembly failed");
 
 ### Multi-file project (ASMSolution)
 
-```rust
-use riscv_asm_lib::r5asm::asm_solution::ASMSolution;
-use core_utils::file_object::FileObject;
+the asm file will support data file in .ini format under the <file_name> folder. Or the assembler support the <file_name>.md file at the same folder of .s file. Please see the images
 
-let main_file = FileObject::new("main", "s", include_str!("main.s"));
-let mut solution = ASMSolution::new(main_file);
-solution.set_container_path("output/");
-solution.add_file("lib", FileObject::new("utils", "s", include_str!("utils.s")));
-```
+![Assembly File with data folder](./doc/asm_dir.png)
+![Assembly file with md file](./doc/asm_md.png)
 
 ---
 
