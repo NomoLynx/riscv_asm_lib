@@ -1,0 +1,11 @@
+,,compact_equ,compact_inc,value,instruction_size,funct3,funct4,funct6,funct2,funct7,control_register_as_imm
+has_compact_equ,,out,,,,,,,,,
+is_compact_inc,,,out,,,,,,,,
+get_value,,,,out,,,,,,,
+get_instruction_size,,,,,out,,,,,,
+get_funct3,,,,,,out,,,,,
+get_funct4,,,,,,,out,,,,
+get_funct6,,,,,,,,out,,,
+get_funct2,,,,,,,,,out,,
+get_funct7,,,,,,,,,,out,
+is_control_register_as_imm,,,,,,,,,,,out

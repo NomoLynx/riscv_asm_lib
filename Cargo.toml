@@ -1,0 +1,17 @@
+[package]
+name = "riscv_asm_lib"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+libc = "*"
+core_utils = { path = "../core_utils" }
+parser_lib = { path = "../parser_lib" }
+rust_macro = { path = "../rust_macro" }
+rust_macro_internal = { path = "../rust_macro_internal" }
+pest = "*"
+pest_derive = { version = "*", features = ["grammar-extras"] }
+chrono = "*"

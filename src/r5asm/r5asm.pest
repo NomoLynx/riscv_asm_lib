@@ -1,0 +1,555 @@
+/// Risc V assemble language
+asm_prog = { SOI ~ section* ~ EOI }
+
+section = { section_tag ~ (label | instruction | directive)* }
+
+section_tag = { ".text" | ".data" | ".bss" | ".rodata"} 
+label = ${ symbol ~ ":" }
+
+directive = { 
+    align_directive |
+    file_directive |
+    globl_local_directive |
+    common_directive |
+    ident_directive |
+    size_directive |
+    string_directive |
+    equ_directive |
+    option_directive |
+    byte_directive |
+    sleb128_directive |
+    uleb128_directive |
+    p2align_directive |
+    balign_directive |
+    zero_directive |
+    variant_cc_directive | 
+    attribute_directive |
+    customer_attribute_directive |
+    type_directive
+}
+
+type_directive = _{ #inc_name = type_directive_name ~ identifier ~ "," ~ ( function_type | object_type ) }
+type_directive_name = { ".type" }
+function_type = { "@function" }
+object_type = { "@object" }
+
+align_directive = _{ #inc_name = align_directive_name ~ integer }
+align_directive_name = { ".align" }
+
+file_directive = _{ #inc_name = file_directive_name ~ string }
+file_directive_name = { ".file" }
+
+globl_local_directive = _{ #inc_name = globl_local_directive_name ~ identifier }
+globl_local_directive_name = { ".globl" | ".local" | ".extern" }
+
+common_directive = _{ #inc_name = common_directive_name ~ identifier ~ "," ~ integer ~ "," ~ integer }
+common_directive_name = { "common" | "comm" }
+
+ident_directive = _{ #inc_name = ident_directive_name ~ string }
+ident_directive_name = { ".ident" }
+
+size_directive = _{ #inc_name = size_directive_name ~ identifier ~ "," ~ expression }
+size_directive_name = { ".size" }
+
+string_directive = _{ #inc_name = string_directive_name ~ string }
+string_directive_name = { ".string" | ".asciz" }
+
+equ_directive = _{ #inc_name = equ_directive_name ~ identifier ~ "," ~ (integer | string | identifier) }
+equ_directive_name = { ".equ" }
+
+option_directive = _{ #inc_name = option_directive_name ~ option_directive_param }
+option_directive_name = { ".option" }
+option_directive_param = { "arch" | "rvc" | "norvc" | "pic" | "nopic" | "relax" | "norelax" | "push" | "pop" }
+
+byte_directive = _{ #inc_name = byte_directive_name ~ expression ~ ("," ~ expression)* }
+byte_directive_name = { ".byte" | ".2byte" | ".4byte" | ".8byte" | ".short" | ".long" | ".quad" | ".half" | ".float" | ".double" | ".dword" | ".word" | ".dtprelword" | ".dtpreldworld" }
+
+sleb128_directive = _{ #inc_name = sleb128_directive_name ~ expression }
+sleb128_directive_name = { ".sleb128" }
+
+uleb128_directive = _{ #inc_name = uleb128_directive_name ~ expression }
+uleb128_directive_name = { ".uleb128" }
+
+p2align_directive = _{ #inc_name = p2align_directive_name ~ integer ~ ("pad_value" ~ "=" ~ "0")? ~ integer }
+p2align_directive_name = { ".p2align" }
+
+balign_directive = _{ #inc_name = balign_directive_name ~ integer ~ ("pad_value" ~ "=" ~ "0")? }
+balign_directive_name = { ".balign" }
+
+zero_directive = _{ #inc_name = zero_directive_name ~ integer }
+zero_directive_name = { ".zero" | ".space" }
+
+variant_cc_directive = _{ #inc_name = variant_cc_directive_name ~ identifier } 
+variant_cc_directive_name = { ".variant_cc" }
+
+attribute_directive = _{ #inc_name = attribute_directive_name ~ (identifier | integer) ~ (identifier | integer) }
+attribute_directive_name = { ".attribute" }
+
+customer_attribute_directive = { #inc_name = end_directive }
+end_directive = { ".end" }
+
+// ⁂ R5 supported instructions
+instruction = { basic_instructions | pseudoinstructions }
+basic_instructions = { 
+    base_integer_instructions | //basic 32 integer
+    rvc_instructions |          //compressed 16-bit extension
+    rv_64_128 |                 //64 and 128 integer
+    rv_privileged_instructions |    //privileged instructions
+    rvm64_128_instructions | rvm32_instructions |   //multiple-divide extension
+    rv32a_instructions |            //atomic extension
+    rv64a_128a_instructions |       //atomic extension
+    rvf_instructions        |       //floating points extension
+    rvf64_128_instructions
+}
+
+base_integer_instructions = { 
+    #inc_name = base_integer_instructions_load_incs ~ rd ~ "," ~ (imm | relocation_function) ~ "(" ~ rs1 ~ ")" |
+    #inc_name = base_integer_instructions_load_incs ~ rd ~ "," ~ rs1 ~ "," ~ (imm | relocation_function) |                  //loads
+    #inc_name = base_integer_instructions_store_incs ~ rs1 ~ "," ~ (imm | relocation_function) ~ "(" ~ rs2 ~ ")" |
+    #inc_name = base_integer_instructions_store_incs ~ rs1 ~ "," ~ rs2 ~ "," ~ imm |                                       //stores
+    #inc_name = base_integer_instructions_shift_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |                  //shifts
+    #inc_name = base_integer_instructions_shift_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~  shamt |          //shift with imm
+    #inc_name = base_integer_instructions_addi ~ rd ~ "," ~ rs1 ~ "," ~ (imm | relocation_function) | 
+    #inc_name = (base_integer_instructions_addi | base_integer_instructions_add_sub ) ~ rd ~ "," ~ rs1 ~ "," ~ rs2 | 
+    #inc_name = base_integer_instructions_arithemtic ~ rd ~ "," ~ (imm | relocation_function ) |                                     //arithemtic
+    #inc_name = base_integer_instructions_logic_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm |
+    #inc_name = base_integer_instructions_logic_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |                //logical
+    #inc_name = base_integer_instructions_compare_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm |
+    #inc_name = base_integer_instructions_compare_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs3 |                       //compare
+    #inc_name = base_integer_instructions_branch_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm |   //branches
+    #inc_name = base_integer_instructions_jalr ~  rd ~ "," ~ ((rs1 ~ "," ~ imm) | (imm ~ "(" ~ rs1 ~ ")") | rs1 )  | 
+    #inc_name = base_integer_instructions_jal ~ rd ~ "," ~ rs1 ~ "," ~ imm |               //jump
+    #inc_name = base_integer_instructions_syc_incs |                             //synch
+    #inc_name = base_integer_instructions_system_call_incs |                              //system call
+    #inc_name = base_integer_instructions_counters_incs ~ rd  //counters   
+}
+
+base_integer_instructions_load_incs = { ^"lbu" | ^"lb" | ^"lhu" | ^"lh" | ^"lw" }
+base_integer_instructions_store_incs = { ^"sb" | ^"sh" | ^"sw" }
+base_integer_instructions_shift_incs = { ^"sll" | ^"srl" | ^"sra" }
+base_integer_instructions_shift_imm_incs = { ^"slli" | ^"srli" | ^"srai" }
+base_integer_instructions_addi = {  ^"addi" }
+base_integer_instructions_add_sub = { ^"add" | ^"sub" }
+base_integer_instructions_arithemtic = { (^"lui" | ^"auipc") }
+base_integer_instructions_logic_imm_incs = { (^"xori" | ^"ori" | ^"andi") }
+base_integer_instructions_logic_incs = { (^"xor" | ^"or" | ^"and") }
+base_integer_instructions_compare_imm_incs = { (^"sltiu" | ^"slti") }
+base_integer_instructions_compare_incs = { (^"sltu" | ^"slt") }
+base_integer_instructions_branch_incs = { (^"beq" | ^"bne" | ^"bltu" | ^"blt" | ^"bgeu" | ^"bge" ) }
+base_integer_instructions_jalr = { ^"jalr" }
+base_integer_instructions_jal = { ^"jal" }
+base_integer_instructions_syc_incs = { ^"fence.i" | ^"fence"  }
+base_integer_instructions_system_call_incs = { ^"scall" | ^"sbreak" }
+base_integer_instructions_counters_incs = { (^"rdcycleh" | ^"rdcycle" | ^"rdtimeh" | ^"rdtime" | ^"rdinstreth" | ^"rdinstret") }
+
+rvc_instructions = {
+    #inc_name = rvc_instructions_load_imm_incs ~ rd ~ "," ~ imm |
+    #inc_name = rvc_instructions_load_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm |            //loads
+    #inc_name = rvc_instructions_store_imm_incs ~ rs2 ~ "," ~ imm | 
+    #inc_name = rvc_instructions_store_incs ~ rs1 ~ "," ~ rs2 ~ "," ~ imm |           //stores
+    #inc_name = rvc_instructions_arithematic_incs ~ rd ~ "," ~ rs1 | 
+    #inc_name = rvc_instructions_arithematic_imm_incs ~ rd ~ "," ~ imm |
+    #inc_name = rvc_instructions_addi ~ ^"x0" ~ "," ~ imm |                  //arithemtic
+    #inc_name = rvc_instructions_ssli ~ rd ~ "," ~ imm |                        //shifts
+    #inc_name = rvc_instructions_branch_incs ~ rs1 ~ "," ~ imm |         //branches
+    #inc_name = rvc_instructions_jump_link_incs ~ rs1 |
+    #inc_name = rvc_instructions_jump_link_incs ~ imm |
+    #inc_name = rvc_instructions_jump_link_incs ~ rd ~ "," ~ rs1 |                          //jump and link
+    #inc_name = rvc_instructions_break                                          //system     
+}
+
+rvc_instructions_load_imm_incs = { (^"c.lwsp" | ^"c.ldsp" | ^"c.lqsp") }
+rvc_instructions_load_incs = { (^"c.lw" | ^"c.ld" | ^"c.lq") }
+rvc_instructions_store_imm_incs = { (^"c.swsp" | ^"c.sdsp" | ^"c.sqsp") }
+rvc_instructions_store_incs = { (^"c.sw" | ^"c.sd" | ^"c.sq") }
+rvc_instructions_arithematic_imm_incs = { (^"c.addiw" | ^"c.addi" | ^"c.lui" | ^"c.lu" | ^"c.addi4spn") }
+rvc_instructions_arithematic_incs = { (^"c.addw" | ^"c.add" | ^"c.mv" | ^"c.sub") }
+rvc_instructions_addi = { ^"c.addi16sp" }
+rvc_instructions_ssli = { ^"c.slli" }
+rvc_instructions_branch_incs = { (^"c.beqz" | ^"c.bnez") }
+rvc_instructions_jump_link_incs = { ^"c.jalr" | (^"c.jal" | ^"c.j") |  ^"c.jr" }
+rvc_instructions_break = { ^"c.break" }
+
+rv_64_128 = {
+    #inc_name = rv_64_128_load_incs ~ rd ~ "," ~ rs1 ~ "," ~ (imm | relocation_function) |              //loads
+    #inc_name = rv_64_128_load_incs ~ rd ~ "," ~ (imm | relocation_function) ~ "(" ~ rs1 ~ ")" |              //loads
+    #inc_name = rv_64_128_store_incs ~ rd ~ "," ~ rs1 ~ "," ~ (imm | relocation_function) |                        //stores
+    #inc_name = rv_64_128_store_incs ~ rd ~ "," ~ (imm | relocation_function) ~ "(" ~ rs1 ~ ")" |
+    #inc_name = rv_64_128_shift_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~  shamt |   
+    #inc_name = rv_64_128_shift_incs ~ rd ~ "," ~ rs1 ~ "," ~  rs2 |         //shifts
+    #inc_name = rv_64_128_arithematic_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm | 
+    #inc_name = rv_64_128_arithematic_incs ~ rd ~ "," ~ rs1 ~ "," ~  rs2              //arithemtic
+}
+
+rv_64_128_load_incs = { (^"ldu" | ^"lq" | ^"lwu" | ^"ld") }
+rv_64_128_store_incs = { (^"sq" | ^"sd") }
+rv_64_128_shift_imm_incs = { (^"slliw" | ^"sllid" | ^"srliw" | ^"srlid" | ^"sraiw" | ^"sraid") }
+rv_64_128_shift_incs = { (^"sllw" | ^"slld" | ^"srlw" | ^"srld" | ^"sraw" | ^"srad") }
+rv_64_128_arithematic_imm_incs = { (^"addiw" | ^"addid") }
+rv_64_128_arithematic_incs = { (^"addw" | ^"addd" | ^"subw" | ^"subd") }
+
+rv_privileged_instructions = {
+    #inc_name = rv_privileged_csr_access_imm_incs ~ rd ~ "," ~ csr ~ "," ~ imm | 
+    #inc_name = rv_privileged_csr_access_incs ~ rd ~ "," ~ csr ~ "," ~ rs1 |             //csr access
+    #inc_name = rv_privileged_csr_trap_interrupt_level_incs |                            //change level, trap, and interrupt
+    #inc_name = rv_privileged_csr_fence ~ rs1                                                          //MMU supervisor fence
+}
+
+rv_privileged_csr_access_imm_incs = { (^"csrrwi" | ^"csrrsi" | ^"csrrci")  }
+rv_privileged_csr_access_incs = { (^"csrrw" | ^"csrrs" | ^"csrrc") }
+rv_privileged_csr_trap_interrupt_level_incs = { ^"mrts" | ^"mrth" | ^"hrts" | ^"wfi" | ^"ecall" | ^"ebreak" | ^"eret" }
+rv_privileged_csr_fence = { ^"sfence.vm" } 
+
+rvm32_instructions = {
+    #inc_name = rvm32_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2
+}
+
+rvm32_incs = {
+    (^"mulhsu" | ^"mulhu" | ^"mulh" | ^"mul" | ^"divu" | ^"div" | ^"remu" | ^"rem")
+}
+
+rvm64_128_instructions = {
+    #inc_name = rvm64_128_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2
+}
+
+rvm64_128_incs = { (^"mulw" | ^"muld" | ^"divw" | ^"divuw" | ^"divd" | ^"remuw" | ^"remud" | ^"remw" | ^"remd") }
+
+rv64a_128a_instructions = { 
+    #inc_name = rv64a_128a_incs ~ rd ~ "," ~ rs1 ~ ("," ~ option)? | 
+    #inc_name = rv64a_128a_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)?
+}
+
+rv64a_128a_2reg_incs = { (^"lr.d" | ^"lr.q") }
+rv64a_128a_incs = { (^"sc.d" | ^"sc.q" | ^"amoswap.d" | ^"amoswap.q" | ^"amoadd.d" | ^"amoadd.q" | ^"amoxor.d" | ^"amoxor.q" | ^"amoand.d" | ^"amoand.q" | ^"amoor.d" | ^"amoor.q" | ^"amominu.d" | ^"amominu.q" | ^"amomaxu.d" | ^"amomaxu.q" | ^"amomin.d" | ^"amomin.q" | ^"amomax.d" | ^"amomax.q") }
+
+rv32a_instructions = {
+    #inc_name = rv32a_2reg_incs ~ rd ~ "," ~ rs1 ~ ("," ~ option)? | 
+    #inc_name = rv32a_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)?
+}
+
+rv32a_2reg_incs = { ^"lr.w" }
+rv32a_incs = { (^"sc.w" | ^"amoswap.w" | ^"amoadd.w" | ^"amoxor.w" | ^"amoand.w" | ^"amoor.w" | ^"amominu.w" | ^"amomaxu.w" | ^"amomin.w" | ^"amomax.w") }
+
+rvf_instructions = {
+    #inc_name = rvf_move_incs ~ rd ~ "," ~ rs1 ~ ("," ~ option)? |                    //move
+    #inc_name = rvf_convert_incs ~ rd ~ "," ~ rs1 ~ ("," ~ option)? |               //convert
+    #inc_name = rvf_load_store_incs ~ rd ~ "," ~ imm ~ "(" ~ rs1 ~ ")" ~ ("," ~ option)? |
+    #inc_name = rvf_load_store_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm ~ ("," ~ option)? |                          //load and store
+    #inc_name = rvf_load_arithemtic_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)? | 
+    #inc_name = rvf_load_arithemtic_2reg_incs ~ rd ~ "," ~ rs1 ~ ("," ~ option)? |                                  //arithemtic
+    #inc_name = rvf_mul_add_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ "," ~ rs3 ~ ("," ~ option)? |                     //mul-add
+    #inc_name = rvf_sign_inject_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)? |     //sign inject
+    #inc_name = rvf_min_max_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)? |              //min and max
+    #inc_name = rvf_compare_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)? |      //compare
+    #inc_name = rvf_categorization_incs ~ rd ~ "," ~ rs1 ~ ("," ~ option)?                                     //categorization
+}
+
+rvf_move_incs = { (^"fmv.h.x" | ^"fmv.s.x" | ^"fmv.x.h" | ^"fmv.x.s") }
+rvf_convert_incs = @{ 
+    ^"fcvt." ~ hsdq ~ (^".wu" | ^".w") |
+    ^"fcvt." ~ (^"wu" | ^"w") ~ "." ~ hsdq
+}
+rvf_load_store_incs = @{ (^"fl" | ^"fs") ~ wdq }
+rvf_load_arithemtic_incs = @{ (^"fadd." | ^"fsub." | ^"fmul." | ^"fdiv.") ~ sdq }
+rvf_load_arithemtic_2reg_incs = @{ ^"fsqrt." ~ sdq }
+rvf_mul_add_incs = @{ (^"fmadd." | ^"fnmadd." | ^"fmsub." | ^"fnmsub.") ~ sdq }
+rvf_sign_inject_incs = @{ (^"fsgnjx." | ^"fsgnjn." | ^"fsgnj.") ~ sdq }
+rvf_min_max_incs = @{ (^"fmin." | ^"fmax.") ~ sdq }
+rvf_compare_incs = @{ (^"feq." | ^"fle." | ^"flt.") ~ sdq }
+rvf_categorization_incs = @{ ^"fclass." ~ sdq }
+
+rvf64_128_instructions = {
+    #inc_name = rvf64_128_move_incs ~ rd ~ "," ~ rs1 |              //move
+    #inc_name = rvf64_128_convert_incs ~ rd ~ "," ~ rs1               //convert
+}
+
+rvf64_128_move_incs = { (^"fmv.d.x" | ^"fmv.q.x" | ^"fmv.x.d" | ^"fmv.x.q") }
+rvf64_128_convert_incs = @{ 
+    ^"fcvt." ~ hsdq ~ (^".lu" | ^".l") |
+    ^"fcvt." ~ hsdq ~ (^".tu" | ^".t") | 
+    ^"fcvt.s.d" | ^"fcvt.d.s" |
+    ^"fcvt." ~ (^"lu" | ^"l") ~  "." ~ hsdq | 
+    ^"fcvt." ~ (^"tu" | ^"t") ~  "." ~ hsdq
+}
+
+sdq = _{ ^"s" | ^"d" | ^"q" }
+hsdq = _{ ^"h" | ^"s" | ^"d" | ^"q" }
+wdq = _{ ^"w" | ^"d" | ^"q" }
+
+pseudoinstructions = {
+    basic_pseudoinstructions |   //add extra layer to save the .rs code effort 
+    tt_extensions_pseudoinstructions  //TT extensions pseudoinstructions
+}
+
+tt_extensions_pseudoinstructions = {
+    #inc_name = tt_extension_debug_incs ~ rd |
+    #inc_name = tt_extension_imm_incs ~ imm |
+    #inc_name = tt_extension_2regs_incs ~ rd ~ "," ~ rs1 |
+    #inc_name = tt_extension_reg_imm_incs ~ rd ~ "," ~ imm
+}
+
+tt_extension_debug_incs = { ^"tt_showreg" }
+tt_extension_imm_incs = { ^"exit" | ^"tt_panic" }
+tt_extension_2regs_incs = { ^"pushby" | ^"popby" }
+tt_extension_reg_imm_incs = { ^"inc" }
+
+basic_pseudoinstructions = {
+    #inc_name = pseudoinstructions_load_incs ~ rd ~ "," ~ (symbol | imm) |
+    #inc_name = pseudoinstructions_store_incs ~ rd ~ "," ~ symbol ~ "," ~ rs1 |
+    #inc_name = pseudoinstructions_nop |
+    #inc_name = pseudoinstructions_li ~ rd ~ "," ~ offset |
+    #inc_name = pseudoinstructions_move_incs ~ rd ~ "," ~ rs1 |
+    #inc_name = pseudoinstructions_compare_incs ~ rs1 ~ "," ~ offset |
+    #inc_name = pseudoinstructions_compare_offset_incs ~ rs1 ~ "," ~ rs2 ~ "," ~ offset |
+    #inc_name = pseudoinstructions_jump_incs ~ rs |
+    #inc_name = pseudoinstructions_stack_incs ~ rs |
+    #inc_name = pseudoinstructions_math_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm |
+    #inc_name = pseudoinstructions_offset_incs ~ offset |
+    #inc_name = pseudoinstructions_ret |
+    #inc_name = pseudoinstructions_call_incs ~ offset |
+    #inc_name = pseudoinstructions_fence |
+    #inc_name = pseudoinstructions_pause | 
+    #inc_name = pseudoinstructions_csr_incs ~ rd |    //csr related psudo instructions start here
+    #inc_name = pseudoinstructions_csrr ~ rd ~ "," ~ csr |
+    #inc_name = pseudoinstructions_csr_imm_incs ~ csr ~ "," ~ imm |
+    #inc_name = pseudoinstructions_csr_rd_incs ~ (rd ~ ",")?  ~ imm |
+    #inc_name = pseudoinstructions_csr_rs_incs ~ csr ~ "," ~ rs |
+    #inc_name = pseudoinstructions_csr_fr_rd_incs ~ (rd ~ ",")? ~ rs |
+    #inc_name = pseudoinstructions_csr_rd_rs_incs ~ (rd ~ ",")? ~ rs |
+    #inc_name = pseudoinstructions_save_incs ~ rs ~ "," ~ rs1
+}
+
+pseudoinstructions_load_incs = { (^"la" | ^"lla" | ^"lga" | ^"lbu" | ^"lhu" | ^"lwu" | ^"lb" | ^"lh" | ^"lw" | ^"ld" | ^"sb" | ^"sh" | ^"sw" | ^"sd") }
+pseudoinstructions_store_incs = { (^"sb" | ^"sh" | ^"sw" | ^"sd" | ^"flw" | ^"fld" | ^"fsw" | ^"fsd") }
+pseudoinstructions_nop = { ^"nop" }
+pseudoinstructions_li = { ^"li" }
+pseudoinstructions_move_incs = { (^"mv" | ^"not" | ^"negw" | ^"neg" | ^"sext.b" | ^"sext.h" | ^"sext.w" | ^"zext.b" | ^"zext.h" | ^"zext.w" | ^"seqz" | ^"snez" | ^"sltz" | ^"sgtz" | ^"fmv.s" | ^"fabs.s" | ^"fneg.s" | ^"fmv.d" | ^"fabs.d" | ^"fneg.d") }
+pseudoinstructions_compare_incs = { (^"beqz" | ^"bnez" | ^"blez" | ^"bgez" | ^"bltz" | ^"bgtz") }
+pseudoinstructions_compare_offset_incs = { (^"bgtu" | ^"bleu" | ^"bgt" | ^"ble") }
+pseudoinstructions_jump_incs = { (^"jalr" | ^"jr") }
+pseudoinstructions_math_incs = { ^"muli" | ^"divi" }
+pseudoinstructions_stack_incs = { ^"pop8" | ^"push8" | ^"pop16" | ^"push16" | ^"pop32" | ^"push32" | ^"pop64" | ^"push64" | ^"pushf32" | ^"popf32" | ^"pushf64" | ^"popf64" | ^"pop" | ^"push" | ^"pushf" | ^"popf" }
+pseudoinstructions_offset_incs = { (^"jal" | ^"j") }
+pseudoinstructions_ret = { ^"ret" }
+pseudoinstructions_call_incs = { (^"call" | ^"tail") }
+pseudoinstructions_fence = { ^"fence" }
+pseudoinstructions_pause = { ^"pause" }
+pseudoinstructions_csr_incs = { (^"rdinstreth" | ^"rdinstret" | ^"rdcycleh" | ^"rdcycle" | ^"rdtimeh" | ^"rdtime") }
+pseudoinstructions_csrr = { ^"csrr" }
+pseudoinstructions_csr_imm_incs = { (^"csrwi" | ^"csrsi" | ^"csrci") }
+pseudoinstructions_csr_rd_incs = { (^"fsrmi" | ^"fsflagsi") }
+pseudoinstructions_csr_rs_incs = { (^"csrw" | ^"csrs" | ^"csrc") }
+pseudoinstructions_csr_fr_rd_incs = { (^"frcsr" | ^"frrm" | ^"frflags" | ^"fssr") }    //fssr will be replaced by frcsr
+pseudoinstructions_csr_rd_rs_incs = { (^"fscsr" | ^"fsrm" | ^"fsflags" | ^"frsr") }    //frsr will be replaced by fscsr
+
+pseudoinstructions_save_incs = { (^"save" | ^"restore") }     //save the register to memory or restore from memory
+
+relocation_function_name = @{
+    "%" ~ (^"hi" | ^"lo" | ^"pcrel_hi_la" | ^"pcrel_lo_la" | ^"pcrel_hi" | ^"pcrel_lo" | ^"tprel_hi" | ^"tprel_lo" | ^"tprel_add" | ^"tls_ie_pcrel_hi" | ^"tls_gd_pcrel_hi" | ^"got_pcrel_hi" | ^"len")
+}
+relocation_function = {
+    relocation_function_name ~ "(" ~ symbol ~ ")"
+}
+
+rd = _{ registers }
+rs1 = _{ registers }
+rs2 = _{ registers }
+rs3 = _{ registers }
+imm = _{ integer | imm_macro | var_name | single_character  }
+shamt = _{ integer | var_name }
+option = { ^"rne" | ^"rtz" | ^"rdn" | ^"rup" | ^"rmm" | ^"dyn" | ^"aqrel" | ^"aq" | ^"rel" }
+
+// define identifer to support dot, like A.b.c and a
+var_name = @{ identifier ~ ("." ~ identifier)* ~ ("@" ~ ("." ~ identifier)*)? }
+
+//immediate value like imm macro
+imm_macro = { ptr_size }
+ptr_size = { "PTRSIZE" ~ ("(" ~ registers ~ ")")? }
+
+rs = _{ registers }
+offset = _{ imm }
+
+symbol = @{ "."? ~ var_name }
+
+// register and register alias
+registers = @{ regiser_with_id | register_ABI }
+regiser_with_id = @{ (^"x" | ^"f") ~ ASCII_DIGIT{1,2} | ^"pc" }   //give basic sanity check, but overall the register is only 32
+register_ABI = { 
+    ^"zero" | ^"ra" | ^"sp" | ^"gp" | ^"tp" | ^"fp" | 
+    (^"t" ~ ('0'..'6')) |
+    (^"s1" ~ ('0'..'1')) | (^"s" ~ ('0'..'9')) |   //s0 to s11
+    (^"a" ~ ('0'..'7')) |
+    (^"ft1" ~ ('0'..'1') | ^"ft" ~ ('0'..'9')) |    //ft0 to ft11
+    (^"fs1" ~ ('0'..'1') | ^"fs" ~ ('0'..'9')) |    //fs0 to fs11
+    (^"fa" ~ ('0'..'7'))                            //fa0 to fa7
+}
+
+csr = @{
+    ^"mvendorid" | ^"marchid" | ^"mimpid" | ^"mhartid" |        //machine info
+    ^"mstatus" | ^"misa" | ^"medeleg" | ^"mideleg" | ^"mie" | ^"mtvec" | ^"mcounteren" | ^"mstatush" |   //machine trap setup
+    ^"mscracth" | ^"mepc" | ^"mcause" | ^"mtval2" | ^"mip" | ^"mtinst" | ^"mtval" |    //machine trap handling
+    (^"pmpcfg" ~ ('0'..'9')) | (^"pmpcfg1" ~ ('0'..'5')) |
+    (^"pmpaddr6" ~ ('0'..'3')) | (^"pmpaddr" ~ ('0'..'9')) | (^"pmpaddr" ~ ('1'..'5') ~ ('0'..'9')) |   //machine memory protection
+    ^"mcycleh" | ^"minstreth" | 
+    (^"mhpmcounter3" ~ ('0'..'1') ~ "h") | (^"mhpmcounter" ~ ('3'..'9') ~ "h") | (^"mhpmcounter" ~ ('1'..'2') ~ ('0'..'9') ~ "h") | 
+    ^"mcycle" | ^"minstret" | 
+    (^"mhpmcounter3" ~ ('0'..'1')) | (^"mhpmcounter" ~ ('3'..'9')) | (^"mhpmcounter" ~ ('1'..'2') ~ ('0'..'9')) |        //machine counter/timer 
+    ^"mcountinhibit" |
+    (^"mhpmevent3" ~ ('0'..'1')) | (^"mhpmevent" ~ ('3'..'9')) | (^"mhpmevent" ~ ('1'..'2') ~ ('0'..'9')) |             //machine counter setup
+    ^"tselect" | (^"tdata" ~ ('1'..'3')) |                                  //debug / trace 
+    ^"dcsr" | ^"dpc" | (^"dscratch" ~ ('0'..'1')) |                         //debug mode
+    ^"sstatus" | ^"sedeleg" | ^"sie" | ^"stvec" | ^"scounteren" |           //supervisor trap setup
+    ^"sscratch" | ^"sepc" | ^"scause" | ^"stval" | ^"sip" |                 //supervisor trap handling
+    ^"satp" |                                                               //supervisor protection 
+    ^"fflags" | ^"frm" | ^"fcsr" |
+    ^"cycleh" | ^"timeh" | ^"instreth" | ^"cycle" | ^"time" | ^"instret"    //counters and timers
+}
+
+// ⁂ white space rule, which will be applied implicitly
+WHITESPACE = _ { " " | "\t" | NEWLINE }
+
+// ⁂ comments, which will be applied implicitly
+COMMENT = _{ "#" ~ (!(NEWLINE | EOI) ~ ANY)* ~ (NEWLINE | EOI) }
+
+// ⁂ Basic Type Grammar
+
+// ⁂ string
+string_no_escape = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+string_escape = @{ "\"" ~ ("\"\"" | "\\\\" | "\\\"" | "\\/" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | !"\"" ~ ANY )* ~ "\"" }
+string = @{ string_escape | string_no_escape }
+
+// ⁂ single quote string
+sq_string_no_escape = @{ "'" ~ (!"'" ~ ANY)* ~ "'" }
+sq_string_escape = @{ "'" ~ (!"'" ~ ANY | "''" | "\\\\" | "\\'" | "\\/" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t")* ~ "'" }
+sq_string = @{ sq_string_no_escape | sq_string_escape }
+
+// ⁂ integer
+integer = { hex_number | oct_number | bin_number | signed_integer }
+
+// signed integer
+sign = { ("+" | "-")? }
+signed_integer = @{ sign? ~ ASCII_DIGIT+ ~ !(^"e" | "." ~ ASCII_DIGIT | ".e") }  // this !(^"e" | ".") is necessary to avoid int prematurally matched, while the value is actaully a float
+
+// hex integer
+hex_number = @{ "0x" ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)* }
+
+// oct number 
+oct_number = @{ "0o" ~ ('0'..'7') ~ ( "_"? ~ ('0'..'7') )* }
+
+// bin integer
+bin_number = @{ "0b" ~ ("0" | "1") ~ ( "_"? ~ ("0" | "1") )* }
+
+// ⁂ float
+float = @{ 
+    sign? ~ "Inf"
+    | "NaN"
+    | decimal ~ (exponent)? ~ !"x"    //this !"x" is necessary to avoid pre-mature match 0x. with this !"x", float rule will fail and turn to match the hex number
+}
+decimal = @{ sign? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? 
+          | sign? ~ "." ~ ASCII_DIGIT* }
+exponent = @{ ("e" | "E") ~ signed_integer }
+
+number = { integer | float }
+
+// ⁂ charcter
+single_character = ${ "'" ~ ("\\U" ~ unicode_code_8 | "\\u" ~ unicode_code_4 | "\\x" ~ hex_code | "\\" ~ escape_char | ANY) ~ "'" }
+escape_char = { "n" | "r" | "t" | "a" | "b" | "f" | "v" }
+unicode_code_8 = { ASCII_HEX_DIGIT{8} }
+unicode_code_4 = { ASCII_HEX_DIGIT{4} }
+hex_code = { ASCII_HEX_DIGIT+ }
+
+// ⁂ An identifier must start with an ascii_alpha character or an underscore
+id = { identifier | sq_string }
+identifier = @{ space_identifier | ascii_alpha ~ ("_" | "`" | ASCII_ALPHANUMERIC )* }
+ascii_alpha = { ASCII_ALPHA | "_" | "`" }
+space_identifier = ${ "`" ~ space_identifier_content ~  "`" }
+space_identifier_content = { (!"`" ~ ANY)+ }
+
+// ⁂ operators & separators
+addition = { "+" }
+subtraction = { "-" }
+multiplication = { "*"  }
+division = { "/" }
+rem = { "%" }
+
+pow = { "**" }
+logic_and = { "&&" }
+logic_or  = { "||" }
+logic_equal = { "==" }
+logic_not_equal = { "!=" }
+logic_not = { "!" }
+
+operator_greater = { ">" }
+operator_equal_or_greater = { ">=" }
+operator_less = { "<" }
+operator_equal_or_less = { "<=" }
+
+bit_left_move = { "<<" }
+bit_right_move = { ">>" }
+bit_and = { "&" }
+bit_or = { "|" }
+bit_not = { "~" }
+bit_exclusive_or = { "^" }
+
+left_bracket = { "(" }
+right_bracket = { ")" }
+left_square_bracket = { "[" }
+right_square_bracket = { "]" }
+
+comma = { "," }
+scope_open = { "{" }
+scope_close = { "}" }
+
+plusplus = { "++" }
+minusminus = { "--" }
+
+// ⁂ Define the rule for the expression
+expression = { atom ~ (binary_op ~ atom)* }
+binary_op = _{
+    pow | 
+    addition | subtraction | multiplication | division | rem |
+    bool_op |
+    bit_left_move | bit_right_move | bit_and | bit_or | bit_exclusive_or |
+    compare_operators
+}
+unary_op = { plusplus | minusminus | subtraction | logic_not | bit_not | bit_and | multiplication }
+post_op = { plusplus | minusminus } 
+atom = _{
+    unary_op? ~ (bool_value | integer | float | identifier | single_character |
+    "(" ~ tenary_expression ~ ")" |
+    "(" ~ expression ~ ")") ~ post_op?
+}
+
+// ⁂ define the Boolean expression
+bool_value = { ^"true" | ^"false" }
+bool_op = _{ logic_and | logic_or }
+compare_operators = _{ operator_equal_or_greater | operator_greater | operator_equal_or_less | operator_less | logic_equal | logic_not_equal }
+
+tenary_expression = { expression ~ ("?" ~ expression ~ ":" ~ expression)? }
+
+// ⁂ dotted name, e.g. ObjectA.PropertyB.PropertyC
+dotted_name = @{ id ~ ("." ~ (id | decimal) )* }
+
+// ⁂ separated name, e.g. ABC::DEF::abc
+rust_name   = ${ id ~ ("::" ~ (id | decimal) )* }
+
+// ⁂ hex byte
+HEXBYTE = @{ ASCII_HEX_DIGIT{2} }
+hexbytes = { HEXBYTE+ }
+
+// ⁂ item count
+item_count = { "[" ~ integer ~ "]" }
+
+// ⁂ file and dir name
+file_dir_name_char               =  _{ ASCII_ALPHANUMERIC | "_" }
+file_or_directory_name_component =  { file_dir_name_char+ }
+file_name                        = @{ file_or_directory_name_component ~ ("." ~ file_or_directory_name_component)* }
+current_dir                      = _{ "." }
+upper_dir                        = _{ ".." }
+directory_name                   = @{ upper_dir | current_dir | file_or_directory_name_component ~ ("." ~ file_or_directory_name_component)* }
+win_dir_splitter                 =  _{ "\\" }
+unix_dir_splitter                =  _{ "/" }
+win_directory                    =  ${ directory_name ~ (win_dir_splitter ~ directory_name)* ~ win_dir_splitter }
+unix_directory                   =  ${ directory_name ~ (unix_dir_splitter ~ directory_name)* ~ unix_dir_splitter }
+directory = { unix_directory | win_directory } 
+path = ${ directory? ~ file_name }

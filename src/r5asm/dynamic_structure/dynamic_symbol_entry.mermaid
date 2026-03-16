@@ -1,0 +1,11 @@
+---
+title: "ELF64 Header (Elf64_Ehdr)"
+---
+packet
+
+0-31:   "st_name"                        %% Symbol name (index into string table), size 32 bits
+32-39:  "st_info"                        %% Symbol type and binding attributes, size 8 bits
+40-47:  "st_other"                       %% Symbol visibility, size 8 bits
+48-63:  "st_shndx"                       %% Section index of symbol, size 16 bits
+64-127: "st_value"                       %% Symbol value (address or offset), size 64 bits
+128-191: "st_size"                        %% Size of symbol (e.g., function size, variable size), size 64 bits

@@ -1,0 +1,29 @@
+---
+title: "ELF64 Header (Elf64_Ehdr)"
+---
+packet
+
+%% ========== e_ident (16 bytes) ==========
+0-31:   "EI_MAG"        %% Magic number: identifies file as ELF
+32-39:  "EI_CLASS"                        %% 1 = 32-bit, 2 = 64-bit
+40-47:  "EI_DATA"                         %% Endianness: 1=little, 2=big
+48-55:  "EI_VERSION"                      %% ELF version (must be 1)
+56-63:  "EI_OSABI"                        %% Target OS ABI (System V, Linux, etc.)
+64-71:  "EI_ABIVERSION"                   %% ABI version
+72-127: "EI_PAD"                          %% Padding, must be zero
+
+%% ========== Main ELF Header ==========
+128-143: "e_type"                         %% File type: ET_EXEC, ET_DYN, ET_REL, etc.
+144-159: "e_machine"                      %% Target ISA: x86-64, ARM, RISC-V...
+160-191: "e_version"                      %% ELF version again (must be 1)
+192-255: "e_entry"                        %% Program entry point address
+256-319: "e_phoff"                        %% Offset of Program Header Table
+320-383: "e_shoff"                        %% Offset of Section Header Table
+384-415: "e_flags"                        %% Architecture-specific flags
+416-431: "e_ehsize"                       %% Size of this ELF header
+432-447: "e_phentsize"                    %% Size of one program header entry
+448-463: "e_phnum"                        %% Number of program header entries
+464-479: "e_shentsize"                    %% Size of one section header entry
+480-495: "e_shnum"                        %% Number of section header entries
+496-511: "e_shstrndx"                     %% Index of section-name string table
+
