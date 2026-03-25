@@ -22,6 +22,41 @@ This project used diagram-to-code idea and will need [Rust Macro Internal](https
 
 ---
 
+## Supported RISC-V Extensions
+
+The assembler supports the following extension families (instruction names are defined by `r5asm.pest` and resolved by the opcode table):
+
+- **RV32I (base integer)**
+    - Integer arithmetic, logic, branches, jumps, loads/stores, fence/system forms.
+- **RV64I (and partial RV128-style forms used by this project)**
+    - 64-bit integer load/store and W-suffixed arithmetic/shift operations.
+- **RVC (C extension, compressed 16-bit)**
+    - Compressed integer instructions and compressed floating load/store forms.
+- **M extension**
+    - Integer multiply/divide/remainder instructions (32-bit and 64-bit variants).
+- **A extension**
+    - Atomic instructions for word/doubleword forms (LR/SC and AMO families).
+- **F extension (single-precision floating point)**
+    - Supported, including load/store (`FLW`/`FSW`), arithmetic (`FADD.S`, `FSUB.S`, `FMUL.S`, `FDIV.S`), comparisons, classify, move, and convert instructions.
+- **D extension (double-precision floating point)**
+    - Supported, including load/store (`FLD`/`FSD`), arithmetic (`FADD.D`, `FSUB.D`, `FMUL.D`, `FDIV.D`), comparisons, classify, move, and convert instructions.
+- **Privileged/CSR instruction group**
+    - CSR read/write forms and selected privileged/system operations.
+- **Pseudo-instructions and project-specific TT extensions**
+    - Expanded during assembly second-round processing.
+
+### Floating-point Data Directives
+
+- `.float` and `.double` directives are supported for data emission.
+- Floating pseudo stack helpers are available (for example `pushf32`/`popf32` and `pushf64`/`popf64`).
+
+### Notes
+
+- This library accepts a practical subset used by the project and does not claim full ratified coverage of every optional RISC-V extension variant.
+- Extension support is best validated by checking `src/r5asm/r5asm.pest` and `src/r5asm/opcode/opcode.rs` together.
+
+---
+
 ## Crate Layout
 
 ```
