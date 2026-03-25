@@ -49,7 +49,8 @@ impl Default for CodeGenConfiguration {
     /// replace_pseudo_code is true
     /// generate_bin_and_code is false
     fn default() -> Self {
-        let marco_instruction_archive = macro_instruction::parse_macro_instructions("macro_instruction.md").unwrap_or_default();
+        let macro_instrution_md_content = include_str!("macro_instruction/macro_instruction.md");
+        let marco_instruction_archive = macro_instruction::parse_macro_instructions(macro_instrution_md_content).unwrap_or_default();
         let mut r = Self { 
             replace_pseudo_code: true, 
             generate_bin_and_code : false, 

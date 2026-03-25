@@ -5,7 +5,7 @@ use super::super::asm_error::*;
 use super::*;
 use core_utils::debug::*;
 use parser_lib::common::ParsingError as ParserLibError;
-use parser_lib::markdown_lang::load_md_file;
+use parser_lib::markdown_lang::load_md_file_from_str;
 
 fn md_table_object_to_hash(table:&parser_lib::markdown_lang::Table) -> Result<HashMap<String, String>, ParserLibError> {
     let mut output = HashMap::default();
@@ -100,8 +100,8 @@ pub (crate) fn parse(input:&str) -> Result<MacroInstructionList, ParserLibError>
     Ok(r.into())
 }
 
-pub (crate) fn parse_macro_instructions(file_name: &str) -> Result<MacroInstructionHashMap, ParserLibError> {
-    let md = load_md_file(file_name)?;
+pub (crate) fn parse_macro_instructions(file_content: &str) -> Result<MacroInstructionHashMap, ParserLibError> {
+    let md = load_md_file_from_str(file_content)?;
     
     let tables = md.get_tables();
     if tables.is_empty() {
