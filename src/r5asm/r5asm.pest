@@ -288,7 +288,7 @@ tt_extensions_pseudoinstructions = {
     #inc_name = tt_extension_reg_imm_incs ~ rd ~ "," ~ imm
 }
 
-tt_extension_debug_incs = { ^"tt_showreg" }
+tt_extension_debug_incs = { ^"tt_showreg" | "exit_reg" }
 tt_extension_imm_incs = { ^"exit" | ^"tt_panic" }
 tt_extension_2regs_incs = { ^"pushby" | ^"popby" }
 tt_extension_reg_imm_incs = { ^"inc" }
