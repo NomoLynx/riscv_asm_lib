@@ -15,3 +15,9 @@ rust_macro_internal = { path = "../rust_macro_internal" }
 pest = "*"
 pest_derive = { version = "*", features = ["grammar-extras"] }
 chrono = "*"
+
+[build-dependencies]
+chrono = "*"
+parser_lib = { path = "../parser_lib" }
+core_utils = { path = "../core_utils" }
+rust_macro = { path = "../rust_macro" }
