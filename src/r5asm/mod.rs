@@ -163,4 +163,55 @@ sh3add.uw x1, x2, x3\n";
 
         assert_eq!(words, expected);
     }
+
+    #[test]
+    fn test_zbs_instruction_parser_acceptance() {
+        let cases = [
+            "bclr x1, x2, x3",
+            "bclri x1, x2, 3",
+            "bext x1, x2, x3",
+            "bexti x1, x2, 3",
+            "binv x1, x2, x3",
+            "binvi x1, x2, 3",
+            "bset x1, x2, x3",
+            "bseti x1, x2, 3",
+        ];
+
+        for case in cases {
+            let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, case);
+            assert!(parsed.is_ok(), "failed to parse zbs instruction: {case}");
+        }
+    }
+
+    #[test]
+    fn test_zbs_instruction_encoding() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+bclr x1, x2, x3\n\
+bclri x1, x2, 3\n\
+bext x1, x2, x3\n\
+bexti x1, x2, 3\n\
+binv x1, x2, x3\n\
+binvi x1, x2, 3\n\
+bset x1, x2, x3\n\
+bseti x1, x2, 3\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("zbs snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x4831_10B3, // bclr x1, x2, x3
+            0x4831_1093, // bclri x1, x2, 3
+            0x4831_50B3, // bext x1, x2, x3
+            0x4831_5093, // bexti x1, x2, 3
+            0x6831_10B3, // binv x1, x2, x3
+            0x6831_1093, // binvi x1, x2, 3
+            0x2831_10B3, // bset x1, x2, x3
+            0x2831_1093, // bseti x1, x2, 3
+        ];
+
+        assert_eq!(words, expected);
+    }
 }

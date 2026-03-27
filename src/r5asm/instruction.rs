@@ -69,6 +69,21 @@ impl Instruction {
                 let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x80;
                 format!("{imm_value}")
             }
+            "bclri" | "bexti" => {
+                // bclri/bexti encode 0b0100100 in imm[11:5] with shamt in imm[4:0].
+                let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x480;
+                format!("{imm_value}")
+            }
+            "binvi" => {
+                // binvi encodes 0b0110100 in imm[11:5] with shamt in imm[4:0].
+                let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x680;
+                format!("{imm_value}")
+            }
+            "bseti" => {
+                // bseti encodes 0b0010100 in imm[11:5] with shamt in imm[4:0].
+                let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x280;
+                format!("{imm_value}")
+            }
             _ => p2.as_str().to_string()
         };
 
@@ -306,6 +321,21 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::registers, p2)] =>
                         Ok([Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
                     _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_zba_instructions)),
+                }
+            }
+            Rule::rv_zbs_instructions => {
+                let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
+                match rules.as_slice() {
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::var_name, p2)] |
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] => {
+                        let imm = Self::process_shamt_value(&inc_name, p2)?;
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm(Some(imm.into()));
+                        Ok([r].to_vec())
+                    }
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::registers, p2)] =>
+                        Ok([Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
+                    _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_zbs_instructions)),
                 }
             }
             Rule::rv_privileged_instructions => {

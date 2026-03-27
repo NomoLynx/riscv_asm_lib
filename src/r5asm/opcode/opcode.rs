@@ -122,6 +122,16 @@ impl OpCode {
             "SH2ADD.UW" => Some(Self::Sh2adduw),
             "SH3ADD.UW" => Some(Self::Sh3adduw),
 
+            //RV32/64 Zbs extension ops
+            "BCLR" => Some(Self::Bclr),
+            "BCLRI" => Some(Self::Bclri),
+            "BEXT" => Some(Self::Bext),
+            "BEXTI" => Some(Self::Bexti),
+            "BINV" => Some(Self::Binv),
+            "BINVI" => Some(Self::Binvi),
+            "BSET" => Some(Self::Bset),
+            "BSETI" => Some(Self::Bseti),
+
             //RV32F, 64D
             "FMADD.S" => Some(Self::Fmadds),
             "FMSUB.S" => Some(Self::Fmsubs),
