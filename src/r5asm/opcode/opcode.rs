@@ -132,6 +132,24 @@ impl OpCode {
             "BSET" => Some(Self::Bset),
             "BSETI" => Some(Self::Bseti),
 
+            //RV32/64 Zbb core extension ops
+            "ANDN" => Some(Self::Andn),
+            "ORN" => Some(Self::Orn),
+            "XNOR" => Some(Self::Xnor),
+            "ROL" => Some(Self::Rol),
+            "ROR" => Some(Self::Ror),
+            "RORI" => Some(Self::Rori),
+            "CLZ" => Some(Self::Clz),
+            "CTZ" => Some(Self::Ctz),
+            "CPOP" => Some(Self::Cpop),
+            "SEXT.B" => Some(Self::Sextb),
+            "SEXT.H" => Some(Self::Sexth),
+            "ORC.B" => Some(Self::Orcb),
+            "MIN" => Some(Self::Min),
+            "MINU" => Some(Self::Minu),
+            "MAX" => Some(Self::Max),
+            "MAXU" => Some(Self::Maxu),
+
             //RV32F, 64D
             "FMADD.S" => Some(Self::Fmadds),
             "FMSUB.S" => Some(Self::Fmsubs),

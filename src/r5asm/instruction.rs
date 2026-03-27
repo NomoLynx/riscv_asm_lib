@@ -56,12 +56,29 @@ pub struct Instruction {
 }
 
 impl Instruction {
+    fn process_fixed_i_imm_value(inc_name: &str) -> Option<String> {
+        match inc_name.to_lowercase().as_str() {
+            "clz" => Some("1536".to_string()),     // 0b011000000000
+            "ctz" => Some("1537".to_string()),     // 0b011000000001
+            "cpop" => Some("1538".to_string()),    // 0b011000000010
+            "sext.b" => Some("1540".to_string()),  // 0b011000000100
+            "sext.h" => Some("1541".to_string()),  // 0b011000000101
+            "orc.b" => Some("647".to_string()),    // 0b001010000111
+            _ => None,
+        }
+    }
+
     fn process_shamt_value(inc_name:&String, p2:&Pair<Rule>) -> Result<String, AsmError> {
         let imm = match inc_name.to_lowercase().as_str() {
             "slliw"| 
             "srliw" |
             "sraiw" => {
                 let imm_value = pair_to_i64(p2)? & 0x1f;
+                format!("{imm_value}")
+            }
+            "rori" => {
+                // rori encodes 0b0110000 in imm[11:5] with shamt in imm[4:0].
+                let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x600;
                 format!("{imm_value}")
             }
             "slli.uw" => {
@@ -235,8 +252,15 @@ impl Instruction {
                         r.set_imm(Some(imm_macro.into()));
                         Ok([r].to_vec())
                     }
-                    [_, (Rule::registers, p), (Rule::registers, p1)] => 
-                        Ok([Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1)].to_vec()),
+                    [_, (Rule::registers, p), (Rule::registers, p1)] => {
+                        let fixed_imm = Self::process_fixed_i_imm_value(&inc_name);
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        if let Some(imm) = fixed_imm {
+                            r.set_imm(Some(imm.into()));
+                        }
+
+                        Ok([r].to_vec())
+                    }
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::option, option)] => 
                         Ok([Self::new_r0_r1_option(inc_name, inc_type, extention_type, p, p1, option)].to_vec()),
                     [_, (Rule::registers, p), (Rule::relocation_function, p2), (Rule::registers, p1)] |
@@ -336,6 +360,30 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::registers, p2)] =>
                         Ok([Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
                     _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_zbs_instructions)),
+                }
+            }
+            Rule::rv_zbb_instructions => {
+                let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
+                match rules.as_slice() {
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::var_name, p2)] |
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] => {
+                        let imm = Self::process_shamt_value(&inc_name, p2)?;
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm(Some(imm.into()));
+                        Ok([r].to_vec())
+                    }
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::registers, p2)] =>
+                        Ok([Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
+                    [_, (Rule::registers, p), (Rule::registers, p1)] => {
+                        let fixed_imm = Self::process_fixed_i_imm_value(&inc_name);
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        if let Some(imm) = fixed_imm {
+                            r.set_imm(Some(imm.into()));
+                        }
+
+                        Ok([r].to_vec())
+                    }
+                    _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_zbb_instructions)),
                 }
             }
             Rule::rv_privileged_instructions => {

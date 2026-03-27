@@ -91,6 +91,7 @@ end_directive = { ".end" }
 // ⁂ R5 supported instructions
 instruction = { basic_instructions | pseudoinstructions }
 basic_instructions = { 
+    rv_zbb_instructions |       //Zbb extension
     rv_zbs_instructions |       //Zbs extension
     rv_zba_instructions |       //Zba extension
     base_integer_instructions | //basic 32 integer
@@ -207,6 +208,16 @@ rv_zbs_instructions = {
 
 rv_zbs_reg_incs = { (^"bclr" | ^"bext" | ^"binv" | ^"bset") }
 rv_zbs_imm_incs = { (^"bclri" | ^"bexti" | ^"binvi" | ^"bseti") }
+
+rv_zbb_instructions = {
+    #inc_name = rv_zbb_reg_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |
+    #inc_name = rv_zbb_shift_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~ shamt |
+    #inc_name = rv_zbb_unary_incs ~ rd ~ "," ~ rs1
+}
+
+rv_zbb_reg_incs = { (^"andn" | ^"orn" | ^"xnor" | ^"rol" | ^"ror" | ^"minu" | ^"min" | ^"maxu" | ^"max") }
+rv_zbb_shift_imm_incs = { ^"rori" }
+rv_zbb_unary_incs = { (^"clz" | ^"ctz" | ^"cpop" | ^"sext.b" | ^"sext.h" | ^"orc.b") }
 
 rv_privileged_instructions = {
     #inc_name = rv_privileged_csr_access_imm_incs ~ rd ~ "," ~ csr ~ "," ~ imm | 

@@ -214,4 +214,79 @@ bseti x1, x2, 3\n";
 
         assert_eq!(words, expected);
     }
+
+    #[test]
+    fn test_zbb_instruction_parser_acceptance_core() {
+        let cases = [
+            "andn x1, x2, x3",
+            "orn x1, x2, x3",
+            "xnor x1, x2, x3",
+            "rol x1, x2, x3",
+            "ror x1, x2, x3",
+            "rori x1, x2, 3",
+            "clz x1, x2",
+            "ctz x1, x2",
+            "cpop x1, x2",
+            "sext.b x1, x2",
+            "sext.h x1, x2",
+            "orc.b x1, x2",
+            "min x1, x2, x3",
+            "minu x1, x2, x3",
+            "max x1, x2, x3",
+            "maxu x1, x2, x3",
+        ];
+
+        for case in cases {
+            let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, case);
+            assert!(parsed.is_ok(), "failed to parse zbb core instruction: {case}");
+        }
+    }
+
+    #[test]
+    fn test_zbb_instruction_encoding_core() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+andn x1, x2, x3\n\
+orn x1, x2, x3\n\
+xnor x1, x2, x3\n\
+rol x1, x2, x3\n\
+ror x1, x2, x3\n\
+rori x1, x2, 3\n\
+clz x1, x2\n\
+ctz x1, x2\n\
+cpop x1, x2\n\
+sext.b x1, x2\n\
+sext.h x1, x2\n\
+orc.b x1, x2\n\
+min x1, x2, x3\n\
+minu x1, x2, x3\n\
+max x1, x2, x3\n\
+maxu x1, x2, x3\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("zbb core snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x4031_70B3, // andn x1, x2, x3
+            0x4031_60B3, // orn x1, x2, x3
+            0x4031_40B3, // xnor x1, x2, x3
+            0x6031_10B3, // rol x1, x2, x3
+            0x6031_50B3, // ror x1, x2, x3
+            0x6031_5093, // rori x1, x2, 3
+            0x6001_1093, // clz x1, x2
+            0x6011_1093, // ctz x1, x2
+            0x6021_1093, // cpop x1, x2
+            0x6041_1093, // sext.b x1, x2
+            0x6051_1093, // sext.h x1, x2
+            0x2871_5093, // orc.b x1, x2
+            0x0A31_40B3, // min x1, x2, x3
+            0x0A31_50B3, // minu x1, x2, x3
+            0x0A31_60B3, // max x1, x2, x3
+            0x0A31_70B3, // maxu x1, x2, x3
+        ];
+
+        assert_eq!(words, expected);
+    }
 }

@@ -1,0 +1,7 @@
+2026-03-27 14:46:50 [ERROR] core_utils::debug - Error (riscv_asm_lib\src\r5asm\assembler.rs:24:0): Assembler Parsing error:   --> 15:4
+   |
+15 | minu x1, x2, x3
+   |    ^---
+   |
+   = expected registers @ minu x1, x2, x3
+2026-03-27 14:46:50 [ERROR] core_utils::debug - Error (riscv_asm_lib\src\r5asm\assembler.rs:214:0): asm snippet build error: GeneralError(riscv_asm_lib\src\r5asm\assembler.rs:25:0, "error: Assembler Parsing error:   --> 15:4\n   |\n15 | minu x1, x2, x3\n   |    ^---\n   |\n   = expected registers @ minu x1, x2, x3 @ Pos((15, 4))")
