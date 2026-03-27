@@ -112,6 +112,16 @@ impl OpCode {
             "REMW" => Some(Self::Remw),
             "REMUW" => Some(Self::Remuw),
 
+            //RV64 Zba extension ops
+            "ADD.UW" => Some(Self::Adduw),
+            "SH1ADD" => Some(Self::Sh1add),
+            "SH2ADD" => Some(Self::Sh2add),
+            "SH3ADD" => Some(Self::Sh3add),
+            "SLLI.UW" => Some(Self::Slliuw),
+            "SH1ADD.UW" => Some(Self::Sh1adduw),
+            "SH2ADD.UW" => Some(Self::Sh2adduw),
+            "SH3ADD.UW" => Some(Self::Sh3adduw),
+
             //RV32F, 64D
             "FMADD.S" => Some(Self::Fmadds),
             "FMSUB.S" => Some(Self::Fmsubs),

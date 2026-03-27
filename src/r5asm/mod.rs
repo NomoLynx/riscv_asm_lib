@@ -78,7 +78,23 @@ pub fn calculate_padding(current_address: u64, alignment_power: u32) -> u64 {
 
 #[cfg(test)]
 pub (self) mod tests {
+    use std::convert::TryInto;
+
+    use pest::Parser;
+
     use super::*;
+
+    fn decode_u32_words(bytes: &[u8]) -> Vec<u32> {
+        bytes
+            .chunks_exact(4)
+            .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
+            .collect()
+    }
+
+    fn set_test_cwd_for_r5asm_data() {
+        let dir = format!("{}/src/r5asm", env!("CARGO_MANIFEST_DIR"));
+        let _ = std::env::set_current_dir(&dir);
+    }
 
     #[test]
     fn test_reverse_string() {
@@ -95,5 +111,56 @@ pub (self) mod tests {
         assert_eq!(calculate_padding(3, 2), 1);
         assert_eq!(calculate_padding(0x201c, 3), 4);
         assert_eq!(calculate_padding(0x203c, 3), 4);
+    }
+
+    #[test]
+    fn test_zba_instruction_parser_acceptance() {
+        let cases = [
+            "add.uw x1, x2, x3",
+            "sh1add x1, x2, x3",
+            "sh2add x1, x2, x3",
+            "sh3add x1, x2, x3",
+            "slli.uw x1, x2, 3",
+            "sh1add.uw x1, x2, x3",
+            "sh2add.uw x1, x2, x3",
+            "sh3add.uw x1, x2, x3",
+        ];
+
+        for case in cases {
+            let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, case);
+            assert!(parsed.is_ok(), "failed to parse zba instruction: {case}");
+        }
+    }
+
+    #[test]
+    fn test_zba_instruction_encoding() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+add.uw x1, x2, x3\n\
+sh1add x1, x2, x3\n\
+sh2add x1, x2, x3\n\
+sh3add x1, x2, x3\n\
+slli.uw x1, x2, 3\n\
+sh1add.uw x1, x2, x3\n\
+sh2add.uw x1, x2, x3\n\
+sh3add.uw x1, x2, x3\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("zba snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x0831_00BB, // add.uw x1, x2, x3
+            0x2031_20B3, // sh1add x1, x2, x3
+            0x2031_40B3, // sh2add x1, x2, x3
+            0x2031_60B3, // sh3add x1, x2, x3
+            0x0831_109B, // slli.uw x1, x2, 3
+            0x2031_20BB, // sh1add.uw x1, x2, x3
+            0x2031_40BB, // sh2add.uw x1, x2, x3
+            0x2031_60BB, // sh3add.uw x1, x2, x3
+        ];
+
+        assert_eq!(words, expected);
     }
 }

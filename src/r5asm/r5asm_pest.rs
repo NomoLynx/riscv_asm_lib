@@ -1,3 +1,4 @@
+use core_utils::number::get_i64_from_str;
 use pest::iterators::Pair;
 use pest_derive::Parser;
 use std::collections::HashMap;
@@ -40,12 +41,7 @@ pub fn from_pair_vec_null_fn_template<T2>(pair:&Pair<Rule>, rule:Rule, config:&m
 
 pub fn pair_to_i64(pair:&Pair<Rule>) -> Result<i64, AsmError> {
     let err = AsmError::ConversionFailed((file!(), line!()).into(), format!("cannot convert '{}' to i64", pair.as_str()));
-    if pair.as_str().starts_with("0x") { 
-        i64::from_str_radix(&pair.as_str()[2..], 16).map_err(|_| err) 
-    } 
-    else { 
-        i64::from_str_radix(pair.as_str(), 10).map_err(|_| err)
-    }
+    get_i64_from_str(pair.as_str()).map_err(|_| err)
 }
 
 pub fn pair_to_char(pair:&Pair<Rule>) -> Result<char, AsmError> {
