@@ -91,10 +91,10 @@ end_directive = { ".end" }
 // ⁂ R5 supported instructions
 instruction = { basic_instructions | pseudoinstructions }
 basic_instructions = { 
+    rv_zba_instructions |       //Zba extension
     base_integer_instructions | //basic 32 integer
     rvc_instructions |          //compressed 16-bit extension
     rv_64_128 |                 //64 and 128 integer
-    rv_zba_instructions |       //Zba extension
     rv_privileged_instructions |    //privileged instructions
     rvm64_128_instructions | rvm32_instructions |   //multiple-divide extension
     rv32a_instructions |            //atomic extension
