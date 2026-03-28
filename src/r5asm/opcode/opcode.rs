@@ -145,6 +145,8 @@ impl OpCode {
             "SEXT.B" => Some(Self::Sextb),
             "SEXT.H" => Some(Self::Sexth),
             "ORC.B" => Some(Self::Orcb),
+            "REV8" => Some(Self::Rev8),
+            "ZEXT.H" => Some(Self::Zexth),
             "MIN" => Some(Self::Min),
             "MINU" => Some(Self::Minu),
             "MAX" => Some(Self::Max),

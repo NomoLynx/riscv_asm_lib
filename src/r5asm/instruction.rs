@@ -64,6 +64,7 @@ impl Instruction {
             "sext.b" => Some("1540".to_string()),  // 0b011000000100
             "sext.h" => Some("1541".to_string()),  // 0b011000000101
             "orc.b" => Some("647".to_string()),    // 0b001010000111
+            "rev8" => Some("1720".to_string()),    // 0b011010111000 (rv64)
             _ => None,
         }
     }
@@ -255,7 +256,10 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1)] => {
                         let fixed_imm = Self::process_fixed_i_imm_value(&inc_name);
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
-                        if let Some(imm) = fixed_imm {
+                        if r.name.to_ascii_lowercase() == "zext.h" {
+                            // zext.h is an alias form that fixes rs2 to x0.
+                            r.r2_name = Some("x0".to_string());
+                        } else if let Some(imm) = fixed_imm {
                             r.set_imm(Some(imm.into()));
                         }
 

@@ -230,6 +230,8 @@ bseti x1, x2, 3\n";
             "sext.b x1, x2",
             "sext.h x1, x2",
             "orc.b x1, x2",
+            "rev8 x1, x2",
+            "zext.h x1, x2",
             "min x1, x2, x3",
             "minu x1, x2, x3",
             "max x1, x2, x3",
@@ -259,6 +261,8 @@ cpop x1, x2\n\
 sext.b x1, x2\n\
 sext.h x1, x2\n\
 orc.b x1, x2\n\
+rev8 x1, x2\n\
+zext.h x1, x2\n\
 min x1, x2, x3\n\
 minu x1, x2, x3\n\
 max x1, x2, x3\n\
@@ -281,6 +285,8 @@ maxu x1, x2, x3\n";
             0x6041_1093, // sext.b x1, x2
             0x6051_1093, // sext.h x1, x2
             0x2871_5093, // orc.b x1, x2
+            0x6B81_5093, // rev8 x1, x2
+            0x0801_40B3, // zext.h x1, x2
             0x0A31_40B3, // min x1, x2, x3
             0x0A31_50B3, // minu x1, x2, x3
             0x0A31_60B3, // max x1, x2, x3

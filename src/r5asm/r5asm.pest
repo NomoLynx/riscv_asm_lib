@@ -217,7 +217,7 @@ rv_zbb_instructions = {
 
 rv_zbb_reg_incs = { (^"andn" | ^"orn" | ^"xnor" | ^"rol" | ^"ror" | ^"minu" | ^"min" | ^"maxu" | ^"max") }
 rv_zbb_shift_imm_incs = { ^"rori" }
-rv_zbb_unary_incs = { (^"clz" | ^"ctz" | ^"cpop" | ^"sext.b" | ^"sext.h" | ^"orc.b") }
+rv_zbb_unary_incs = { (^"clz" | ^"ctz" | ^"cpop" | ^"sext.b" | ^"sext.h" | ^"orc.b" | ^"rev8" | ^"zext.h") }
 
 rv_privileged_instructions = {
     #inc_name = rv_privileged_csr_access_imm_incs ~ rd ~ "," ~ csr ~ "," ~ imm | 
