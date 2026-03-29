@@ -66,6 +66,9 @@ impl Instruction {
             "sext.h" => Some("1541".to_string()),  // 0b011000000101
             "orc.b" => Some("647".to_string()),    // 0b001010000111
             "rev8" => Some("1720".to_string()),    // 0b011010111000 (rv64)
+            "clzw" => Some("1536".to_string()),    // 0b011000000000 (RV64 word)
+            "ctzw" => Some("1537".to_string()),    // 0b011000000001 (RV64 word)
+            "cpopw" => Some("1538".to_string()),   // 0b011000000010 (RV64 word)
             _ => None,
         }
     }
@@ -101,6 +104,11 @@ impl Instruction {
             "bseti" => {
                 // bseti encodes 0b0010100 in imm[11:5] with shamt in imm[4:0].
                 let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x280;
+                format!("{imm_value}")
+            }
+            "roriw" => {
+                // roriw encodes 0b0110000 in imm[11:5] with shamt in imm[4:0] (RV64 word).
+                let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x600;
                 format!("{imm_value}")
             }
             _ => p2.as_str().to_string()

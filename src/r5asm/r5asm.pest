@@ -212,12 +212,18 @@ rv_zbs_imm_incs = { (^"bclri" | ^"bexti" | ^"binvi" | ^"bseti") }
 rv_zbb_instructions = {
     #inc_name = rv_zbb_reg_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |
     #inc_name = rv_zbb_shift_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~ shamt |
-    #inc_name = rv_zbb_unary_incs ~ rd ~ "," ~ rs1
+    #inc_name = rv_zbb_unary_incs ~ rd ~ "," ~ rs1 |
+    #inc_name = rv_zbb_w_reg_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |
+    #inc_name = rv_zbb_w_shift_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~ shamt |
+    #inc_name = rv_zbb_w_unary_incs ~ rd ~ "," ~ rs1
 }
 
 rv_zbb_reg_incs = { (^"andn" | ^"orn" | ^"xnor" | ^"rol" | ^"ror" | ^"minu" | ^"min" | ^"maxu" | ^"max") }
 rv_zbb_shift_imm_incs = { ^"rori" }
 rv_zbb_unary_incs = { (^"clz" | ^"ctz" | ^"cpop" | ^"sext.b" | ^"sext.h" | ^"orc.b" | ^"rev8" | ^"zext.h") }
+rv_zbb_w_reg_incs = { (^"rolw" | ^"rorw") }
+rv_zbb_w_shift_imm_incs = { ^"roriw" }
+rv_zbb_w_unary_incs = { (^"clzw" | ^"ctzw" | ^"cpopw") }
 
 rv_privileged_instructions = {
     #inc_name = rv_privileged_csr_access_imm_incs ~ rd ~ "," ~ csr ~ "," ~ imm | 

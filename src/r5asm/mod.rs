@@ -295,4 +295,49 @@ maxu x1, x2, x3\n";
 
         assert_eq!(words, expected);
     }
+
+    #[test]
+    fn test_zbb_instruction_parser_acceptance_w() {
+        let cases = [
+            "rolw x1, x2, x3",
+            "rorw x1, x2, x3",
+            "roriw x1, x2, 3",
+            "clzw x1, x2",
+            "ctzw x1, x2",
+            "cpopw x1, x2",
+        ];
+
+        for case in cases {
+            let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, case);
+            assert!(parsed.is_ok(), "failed to parse zbb word instruction: {case}");
+        }
+    }
+
+    #[test]
+    fn test_zbb_instruction_encoding_w() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+rolw x1, x2, x3\n\
+rorw x1, x2, x3\n\
+roriw x1, x2, 3\n\
+clzw x1, x2\n\
+ctzw x1, x2\n\
+cpopw x1, x2\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("zbb word snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x6031_10BB, // rolw x1, x2, x3
+            0x6031_50BB, // rorw x1, x2, x3
+            0x6031_509B, // roriw x1, x2, 3
+            0x6001_109B, // clzw x1, x2
+            0x6011_109B, // ctzw x1, x2
+            0x6021_109B, // cpopw x1, x2
+        ];
+
+        assert_eq!(words, expected);
+    }
 }
