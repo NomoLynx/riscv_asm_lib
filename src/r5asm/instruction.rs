@@ -259,6 +259,7 @@ impl Instruction {
         
         // first load high 32 bits with 2 instructions
         let imm_high32 = (imm as u64) >> 32;
+        let imm_low32 = imm as u64 & 0xFFFFFFFF;
 
         let (low, high) = Self::get_low12_and_high_with_sign_process(imm_high32 as i64);
         let r = Self::new_lui(rd, high.into());
@@ -267,9 +268,9 @@ impl Instruction {
         instrs.push(r2);
 
         // the rest 32 bits can be loaded with slli and ori, ori only handle 12 bits
-        let top8  = (low >> 24) & 0xFF;
-        let mid12 = (low >> 12) & 0xFFF;
-        let bot12 = (low >>  0) & 0xFFF;
+        let top8  = (imm_low32 >> 24) & 0xFF;
+        let mid12 = (imm_low32 >> 12) & 0xFFF;
+        let bot12 = (imm_low32 >>  0) & 0xFFF;
         
         let shift_top8 = Self::new_slli(rd, rd, 8);
         instrs.push(shift_top8);
