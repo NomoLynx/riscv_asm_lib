@@ -5,6 +5,11 @@ A RISC-V assembler and linker library written in Rust, capable of parsing RISC-V
 
 This project used diagram-to-code idea and will need [Rust Macro Internal](https://github.com/NomoLynx/rust_macro_internal) to compile. If you want to view the diagram please install markdown and mermiad viewer in your IDE (e.g. VSCode)
 
+## Recent Updates
+
+- **2026-03-29**: Added and documented RV64 Zbb word-form instructions (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
+- **2026-03-29**: Added explicit bit-manip instruction test coverage references for `zbb_core.s`, `zbb_word.s`, and `zbs_extra.s`.
+
 ---
 
 ## Features
