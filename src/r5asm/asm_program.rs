@@ -266,31 +266,10 @@ impl AsmProgram {
         let inc = item.get_inc().unwrap();
         match inc.name.to_lowercase().as_str() {
             "li" => {
-                let is_near = inc.is_imm_near_value();
-                if is_near {
-                    let (inc_name, inc_type) = Instruction::get_inc_and_inc_type("addi")?;
-                    let mut r = Instruction::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
-                    r.r1_name = Some("x0".to_string());
-                    r.r0_name = inc.r0_name.clone();
-                    r.set_imm(inc.get_imm().map(|x| x.clone()));
-                    Ok([SectionItem2::new(0, SectionItem::Instruction(r))].to_vec())
-                }
-                else {
-                    let imm = inc.imm_to_u32()?;
-                    let (low, high) = Instruction::get_low12_and_high_with_sign_process(imm.into() );
-                    let (inc_name, inc_type) = Instruction::get_inc_and_inc_type("lui")?;                                    
-                    let mut r = Instruction::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
-                    r.r0_name = inc.r0_name.clone();
-                    r.set_imm(Some(high.into()));
-
-                    let (inc_name2, inc_type2) = Instruction::get_inc_and_inc_type("addi")?; 
-                    let mut r2 = Instruction::new(inc_name2, inc_type2, BasicInstructionExtensions::BaseIntegerInstructions);
-                    r2.r0_name = inc.r0_name.clone();
-                    r2.r1_name = inc.r0_name.clone();
-                    r2.set_imm(Some(low.into()));
-
-                    Ok([SectionItem2::new(0, SectionItem::Instruction(r)), SectionItem2::new(0, SectionItem::Instruction(r2))].to_vec())
-                }
+                let rd = inc.r0_name.as_deref().unwrap_or("x0");
+                let imm = inc.imm_to_i64()?;
+                let incs = Instruction::li_from_imm(rd, imm)?;
+                Ok(incs.into_iter().map(|i| SectionItem2::new(0, SectionItem::Instruction(i))).collect())
             }
             "call" => { 
                 // don't process here and leave for next function

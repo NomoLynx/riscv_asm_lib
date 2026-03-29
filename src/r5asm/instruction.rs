@@ -252,7 +252,25 @@ impl Instruction {
             .with_imm(imm.to_string().into())
     }
 
-    fn li_to_incs(rd:&str, imm:i64, _config:&mut CodeGenConfiguration) -> Result<Vec<Self>, AsmError> {
+    /// Expand a `li rd, imm` pseudo-instruction into real instructions for any imm width.
+    /// Near (-2048..=2047)   → addi rd, x0, imm
+    /// 32-bit                → lui + addi
+    /// 64-bit                → lui/addi + slli/ori sequence
+    pub (crate) fn li_from_imm(rd: &str, imm: i64) -> Result<Vec<Self>, AsmError> {
+        if Self::is_near(imm) {
+            let r = Self::new_addi(rd, "x0", imm);
+            Ok(vec![r])
+        } else if can_fits_in_32bit(imm) {
+            let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
+            let r  = Self::new_lui(rd, high.into());
+            let r2 = Self::new_addi(rd, rd, low.into());
+            Ok(vec![r, r2])
+        } else {
+            Self::li_to_incs(rd, imm)
+        }
+    }
+
+    fn li_to_incs(rd:&str, imm:i64) -> Result<Vec<Self>, AsmError> {
         assert!(!can_fits_in_32bit(imm));
 
         let mut instrs = Vec::new();
@@ -687,24 +705,10 @@ impl Instruction {
                         if replace_pseudo {
                             let imm = if p1.as_rule() == Rule::integer { pair_to_i64(p1)? as i64 }
                                         else { pair_to_char(p1)? as i64 };
-                            let is_near = Self::is_near(imm);
                             match inc_name_low_case {
                                 "ld" |
                                 "li" => {
-                                    if is_near {
-                                        let r = Self::new_addi(p.as_str(), "x0", imm);
-                                        Ok([r].to_vec())
-                                    }
-                                    else if can_fits_in_32bit(imm) {
-                                        let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
-                                        let r = Self::new_lui(p.as_str(), high.into());
-                                        let r2 = Self::new_addi(p.as_str(), p.as_str(), low.into());
-
-                                        Ok([r, r2].to_vec())
-                                    }
-                                    else {
-                                        Self::li_to_incs(p.as_str(), imm, config)
-                                    }
+                                    Self::li_from_imm(p.as_str(), imm)
                                 }
                                 "beqz" => {
                                     let (inc_name, inc_type) = Self::get_inc_and_inc_type("beq")?;
@@ -1587,6 +1591,15 @@ impl Instruction {
     pub (crate) fn imm_to_u32(&self) -> Result<u32, AsmError> {
         if let Some(imm) = self.get_imm().and_then(|x| x.to_string_option()) {
             Self::imm_str_to_u32(&imm)
+        }
+        else {
+            Ok(0)
+        }
+    }
+
+    pub (crate) fn imm_to_i64(&self) -> Result<i64, AsmError> {
+        if let Some(imm) = self.get_imm().and_then(|x| x.to_string_option()) {
+            Self::imm_str_to_i64(&imm)
         }
         else {
             Ok(0)
