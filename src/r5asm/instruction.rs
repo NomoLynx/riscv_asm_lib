@@ -9,7 +9,8 @@ use core_utils::number::*;
 use core_utils::traits::generate_code::GenerateCode;
 use super::label_offset::*;
 
-use super::{basic_instruction_extensions::BasicInstructionExtensions, code_gen_config::CodeGenConfiguration, opcode::OpCode, r5asm_pest::*, register::Register};
+use super::basic_instruction_extensions::BasicInstructionExtensions;
+use super::{code_gen_config::CodeGenConfiguration, opcode::OpCode, r5asm_pest::*, register::Register};
 
 use std::fmt;
 
@@ -218,6 +219,95 @@ impl Instruction {
                 return Err(err);
             }
         }
+    }
+
+    fn new_addi(rd:&str, rs1:&str, imm:i64) -> Self {
+        let (inc_name, inc_type) = Self::get_inc_and_inc_type("addi").unwrap();
+        Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions)
+            .with_r0(rd)
+            .with_r1(rs1)
+            .with_imm(imm.to_string().into())
+    }
+
+    fn new_lui(rd:&str, imm:i64) -> Self {
+        let (inc_name, inc_type) = Self::get_inc_and_inc_type("lui").unwrap();
+        Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions)
+            .with_r0(rd)
+            .with_imm(imm.to_string().into())
+    }
+
+    fn new_slli(rd:&str, rs1:&str, shamt:i64) -> Self {
+        let (inc_name, inc_type) = Self::get_inc_and_inc_type("slli").unwrap();
+        Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions)
+            .with_r0(rd)
+            .with_r1(rs1)
+            .with_imm(shamt.to_string().into())
+    }
+
+    fn new_ori(rd:&str, rs1:&str, imm:i64) -> Self {
+        let (inc_name, inc_type) = Self::get_inc_and_inc_type("ori").unwrap();
+        Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions)
+            .with_r0(rd)
+            .with_r1(rs1)
+            .with_imm(imm.to_string().into())
+    }
+
+    fn li_to_incs(rd:&str, imm:i64, _config:&mut CodeGenConfiguration) -> Result<Vec<Self>, AsmError> {
+        assert!(!can_fits_in_32bit(imm));
+
+        let mut instrs = Vec::new();
+        
+        // first load high 32 bits with 2 instructions
+        let imm_high32 = (imm as u64) >> 32;
+
+        let (low, high) = Self::get_low12_and_high_with_sign_process(imm_high32 as i64);
+        let r = Self::new_lui(rd, high.into());
+        let r2 = Self::new_addi(rd, rd, low.into());
+        instrs.push(r);
+        instrs.push(r2);
+
+        // the rest 32 bits can be loaded with slli and ori, ori only handle 12 bits
+        let top8  = (low >> 24) & 0xFF;
+        let mid12 = (low >> 12) & 0xFFF;
+        let bot12 = (low >>  0) & 0xFFF;
+        
+        let shift_top8 = Self::new_slli(rd, rd, 8);
+        instrs.push(shift_top8);
+        if top8 != 0 {
+            let r = Self::new_ori(rd, rd, top8 as i64);
+            instrs.push(r);
+        }
+
+        let shift_mid12 = Self::new_slli(rd, rd, 12);
+        instrs.push(shift_mid12);
+        if mid12 != 0 {
+            let r = Self::new_ori(rd, rd, mid12 as i64);
+            instrs.push(r);
+        }
+
+        let shift_bot12 = Self::new_slli(rd, rd, 12);
+        instrs.push(shift_bot12);
+        if bot12 != 0 {
+            let r = Self::new_ori(rd, rd, bot12 as i64);
+            instrs.push(r);
+        }
+
+        Ok(instrs)
+    }
+
+    fn with_r0(mut self, r0_name:&str) -> Self {
+        self.r0_name = Some(r0_name.to_string());
+        self
+    }
+
+    fn with_r1(mut self, r1_name:&str) -> Self {
+        self.r1_name = Some(r1_name.to_string());
+        self
+    }
+
+    fn with_imm(mut self, imm:Imm) -> Self {
+        self.imm = Some(imm);
+        self
     }
 
     pub (crate) fn from_pair(pair:&Pair<Rule>, config:&mut CodeGenConfiguration) -> Result<Vec<Self>, AsmError> {
@@ -601,22 +691,18 @@ impl Instruction {
                                 "ld" |
                                 "li" => {
                                     if is_near {
-                                        let (inc_name, inc_type) = Self::get_inc_and_inc_type("addi")?;
-                                        let mut r = Self::new_r0_imm(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions, p, p1);
-                                        r.r1_name = Some("x0".to_string());
+                                        let r = Self::new_addi(p.as_str(), "x0", imm);
                                         Ok([r].to_vec())
                                     }
-                                    else {
-                                        let (low, high) = Self::get_low12_and_high_with_sign_process(imm.into());
-                                        let (inc_name, inc_type) = Self::get_inc_and_inc_type("lui")?;                                    
-                                        let mut r = Self::new_r0(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions, p);
-                                        r.set_imm(Some(high.into()));
-
-                                        let (inc_name2, inc_type2) = Self::get_inc_and_inc_type("addi")?; 
-                                        let mut r2 = Self::new_r0_r1(inc_name2, inc_type2, BasicInstructionExtensions::BaseIntegerInstructions, p, p);
-                                        r2.set_imm(Some(low.into()));
+                                    else if can_fits_in_32bit(imm) {
+                                        let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
+                                        let r = Self::new_lui(p.as_str(), high.into());
+                                        let r2 = Self::new_addi(p.as_str(), p.as_str(), low.into());
 
                                         Ok([r, r2].to_vec())
+                                    }
+                                    else {
+                                        Self::li_to_incs(p.as_str(), imm, config)
                                     }
                                 }
                                 "beqz" => {
