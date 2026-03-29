@@ -40,6 +40,7 @@ The assembler supports the following extension families (instruction names are d
     - Supported forms include `add.uw`, `sh1add`, `sh2add`, `sh3add`, `slli.uw`, and RV64 `*.uw` shift-add variants.
 - **Zbb (bit-manip basic/core)**
     - Supported forms include `andn`, `orn`, `xnor`, `rol`, `ror`, `rori`, `clz`, `ctz`, `cpop`, `sext.b`, `sext.h`, `orc.b`, `rev8`, `zext.h`, `min`, `minu`, `max`, and `maxu`.
+    - RV64 word forms are also supported: `clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, and `roriw`.
 - **Zbs (bit-manip single-bit instructions)**
     - Supported forms include `bclr`, `bclri`, `bext`, `bexti`, `binv`, `binvi`, `bset`, and `bseti`.
 - **F extension (single-precision floating point)**
@@ -60,6 +61,14 @@ The assembler supports the following extension families (instruction names are d
 
 - This library accepts a practical subset used by the project and does not claim full ratified coverage of every optional RISC-V extension variant.
 - Extension support is best validated by checking `src/r5asm/r5asm.pest` and `src/r5asm/opcode/opcode.rs` together.
+
+### Instruction Test Coverage (Bit-Manip)
+
+Recent instruction additions in the bit-manip groups are covered by dedicated assembly tests:
+
+- `../test_data/test_r5asm/unit_tests/zbb_core.s` for core Zbb instructions.
+- `../test_data/test_r5asm/unit_tests/zbb_word.s` for RV64 Zbb word forms (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
+- `../test_data/test_r5asm/unit_tests/zbs_extra.s` for extended Zbs instruction checks.
 
 ---
 
