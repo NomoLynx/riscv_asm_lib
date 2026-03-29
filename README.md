@@ -36,6 +36,12 @@ The assembler supports the following extension families (instruction names are d
     - Integer multiply/divide/remainder instructions (32-bit and 64-bit variants).
 - **A extension**
     - Atomic instructions for word/doubleword forms (LR/SC and AMO families).
+- **Zba (bit-manip address generation)**
+    - Supported forms include `add.uw`, `sh1add`, `sh2add`, `sh3add`, `slli.uw`, and RV64 `*.uw` shift-add variants.
+- **Zbb (bit-manip basic/core)**
+    - Supported forms include `andn`, `orn`, `xnor`, `rol`, `ror`, `rori`, `clz`, `ctz`, `cpop`, `sext.b`, `sext.h`, `orc.b`, `rev8`, `zext.h`, `min`, `minu`, `max`, and `maxu`.
+- **Zbs (bit-manip single-bit instructions)**
+    - Supported forms include `bclr`, `bclri`, `bext`, `bexti`, `binv`, `binvi`, `bset`, and `bseti`.
 - **F extension (single-precision floating point)**
     - Supported, including load/store (`FLW`/`FSW`), arithmetic (`FADD.S`, `FSUB.S`, `FMUL.S`, `FDIV.S`), comparisons, classify, move, and convert instructions.
 - **D extension (double-precision floating point)**
