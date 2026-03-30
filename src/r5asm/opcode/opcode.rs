@@ -127,6 +127,10 @@ impl OpCode {
             "CLMULR" => Some(Self::Clmulr),
             "CLMULH" => Some(Self::Clmulh),
 
+            //RV32/64 Zicond extension ops
+            "CZERO.EQZ" => Some(Self::Czeroeqz),
+            "CZERO.NEZ" => Some(Self::Czeronez),
+
             //RV32/64 Zbs extension ops
             "BCLR" => Some(Self::Bclr),
             "BCLRI" => Some(Self::Bclri),

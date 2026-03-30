@@ -94,6 +94,7 @@ basic_instructions = {
     rv_zbb_instructions |       //Zbb extension
     rv_zbs_instructions |       //Zbs extension
     rv_zbc_instructions |       //Zbc extension
+    rv_zicond_instructions |    //Zicond extension
     rv_zba_instructions |       //Zba extension
     base_integer_instructions | //basic 32 integer
     rvc_instructions |          //compressed 16-bit extension
@@ -207,6 +208,12 @@ rv_zbc_instructions = {
 }
 
 rv_zbc_incs = { (^"clmulh" | ^"clmulr" | ^"clmul" ) }
+
+rv_zicond_instructions = {
+    #inc_name = rv_zicond_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2
+}
+
+rv_zicond_incs = { (^"czero.eqz" | ^"czero.nez") }
 
 rv_zbs_instructions = {
     #inc_name = rv_zbs_reg_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |
