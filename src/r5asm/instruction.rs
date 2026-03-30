@@ -497,6 +497,14 @@ impl Instruction {
                     _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_zba_instructions)),
                 }
             }
+            Rule::rv_zbc_instructions => {
+                let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
+                match rules.as_slice() {
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::registers, p2)] =>
+                        Ok([Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
+                    _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_zbc_instructions)),
+                }
+            }
             Rule::rv_zbs_instructions => {
                 let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
                 match rules.as_slice() {

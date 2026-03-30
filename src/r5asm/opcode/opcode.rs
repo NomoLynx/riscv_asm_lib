@@ -122,6 +122,11 @@ impl OpCode {
             "SH2ADD.UW" => Some(Self::Sh2adduw),
             "SH3ADD.UW" => Some(Self::Sh3adduw),
 
+            //RV32/64 Zbc extension ops
+            "CLMUL" => Some(Self::Clmul),
+            "CLMULR" => Some(Self::Clmulr),
+            "CLMULH" => Some(Self::Clmulh),
+
             //RV32/64 Zbs extension ops
             "BCLR" => Some(Self::Bclr),
             "BCLRI" => Some(Self::Bclri),
