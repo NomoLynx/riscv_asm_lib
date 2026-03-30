@@ -69,6 +69,20 @@ impl Instruction {
             "clzw" => Some("1536".to_string()),    // 0b011000000000 (RV64 word)
             "ctzw" => Some("1537".to_string()),    // 0b011000000001 (RV64 word)
             "cpopw" => Some("1538".to_string()),   // 0b011000000010 (RV64 word)
+            "brev8" => Some("1671".to_string()),   // 0b011010000111
+            "zip" => Some("143".to_string()),      // 0b000010001111 (RV32)
+            "unzip" => Some("143".to_string()),    // 0b000010001111 (RV32)
+            "aes64im" => Some("768".to_string()),  // 0b001100000000
+            "sha256sig0" => Some("258".to_string()), // 0b000100000010
+            "sha256sig1" => Some("259".to_string()), // 0b000100000011
+            "sha256sum0" => Some("256".to_string()), // 0b000100000000
+            "sha256sum1" => Some("257".to_string()), // 0b000100000001
+            "sha512sig0" => Some("262".to_string()), // 0b000100000110
+            "sha512sig1" => Some("263".to_string()), // 0b000100000111
+            "sha512sum0" => Some("260".to_string()), // 0b000100000100
+            "sha512sum1" => Some("261".to_string()), // 0b000100000101
+            "sm3p0" => Some("264".to_string()),      // 0b000100001000
+            "sm3p1" => Some("265".to_string()),      // 0b000100001001
             _ => None,
         }
     }
@@ -109,6 +123,16 @@ impl Instruction {
             "roriw" => {
                 // roriw encodes 0b0110000 in imm[11:5] with shamt in imm[4:0] (RV64 word).
                 let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x600;
+                format!("{imm_value}")
+            }
+            "aes64ks1i" => {
+                // aes64ks1i uses imm[11:5]=0b0011000, imm[4]=1, imm[3:0]=rnum (0..10).
+                let rnum = pair_to_i64(p2)?;
+                if !(0..=10).contains(&rnum) {
+                    return Err(AsmError::GeneralError((file!(), line!()).into(),
+                        format!("aes64ks1i rnum must be in [0,10], got {rnum}")));
+                }
+                let imm_value = 0x310 | (rnum & 0xf);
                 format!("{imm_value}")
             }
             _ => p2.as_str().to_string()
@@ -550,6 +574,30 @@ impl Instruction {
                         Ok([r].to_vec())
                     }
                     _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_zbb_instructions)),
+                }
+            }
+            Rule::rv_k_crypto_instructions => {
+                let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
+                match rules.as_slice() {
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::registers, p2)] =>
+                        Ok([Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
+                    [_, (Rule::registers, p), (Rule::registers, p1)] => {
+                        let fixed_imm = Self::process_fixed_i_imm_value(&inc_name);
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        if let Some(imm) = fixed_imm {
+                            r.set_imm(Some(imm.into()));
+                        }
+
+                        Ok([r].to_vec())
+                    }
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] |
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::var_name, p2)] => {
+                        let imm = Self::process_shamt_value(&inc_name, p2)?;
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm(Some(imm.into()));
+                        Ok([r].to_vec())
+                    }
+                    _ => Err(AsmError::MissingCase((file!(), line!()).into(), Rule::rv_k_crypto_instructions)),
                 }
             }
             Rule::rv_privileged_instructions => {

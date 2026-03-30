@@ -91,6 +91,7 @@ end_directive = { ".end" }
 // ⁂ R5 supported instructions
 instruction = { basic_instructions | pseudoinstructions }
 basic_instructions = { 
+    rv_k_crypto_instructions |  //K crypto extensions (supported subset)
     rv_zbb_instructions |       //Zbb extension
     rv_zbs_instructions |       //Zbs extension
     rv_zbc_instructions |       //Zbc extension
@@ -238,6 +239,28 @@ rv_zbb_unary_incs = { (^"clz" | ^"ctz" | ^"cpop" | ^"sext.b" | ^"sext.h" | ^"orc
 rv_zbb_w_reg_incs = { (^"rolw" | ^"rorw") }
 rv_zbb_w_shift_imm_incs = { ^"roriw" }
 rv_zbb_w_unary_incs = { (^"clzw" | ^"ctzw" | ^"cpopw") }
+
+rv_k_crypto_instructions = {
+    #inc_name = rv_k_crypto_reg_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |
+    #inc_name = rv_k_crypto_unary_incs ~ rd ~ "," ~ rs1 |
+    #inc_name = rv_k_crypto_rnum_incs ~ rd ~ "," ~ rs1 ~ "," ~ integer
+}
+
+rv_k_crypto_reg_incs = {
+    (^"packh" | ^"packw" | ^"pack" |
+     ^"xperm4" | ^"xperm8" |
+     ^"aes64dsm" | ^"aes64ds" | ^"aes64esm" | ^"aes64es" | ^"aes64ks2")
+}
+
+rv_k_crypto_unary_incs = {
+    (^"brev8" | ^"unzip" | ^"zip" |
+     ^"aes64im" |
+     ^"sha256sig0" | ^"sha256sig1" | ^"sha256sum0" | ^"sha256sum1" |
+     ^"sha512sig0" | ^"sha512sig1" | ^"sha512sum0" | ^"sha512sum1" |
+     ^"sm3p0" | ^"sm3p1")
+}
+
+rv_k_crypto_rnum_incs = { ^"aes64ks1i" }
 
 rv_privileged_instructions = {
     #inc_name = rv_privileged_csr_access_imm_incs ~ rd ~ "," ~ csr ~ "," ~ imm | 
