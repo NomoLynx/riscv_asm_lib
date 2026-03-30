@@ -252,6 +252,14 @@ impl Instruction {
             .with_imm(shamt.to_string().into())
     }
 
+    fn new_srli(rd:&str, rs1:&str, shamt:i64) -> Self {
+        let (inc_name, inc_type) = Self::get_inc_and_inc_type("srli").unwrap();
+        Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions)
+            .with_r0(rd)
+            .with_r1(rs1)
+            .with_imm(shamt.to_string().into())
+    }
+
     fn new_ori(rd:&str, rs1:&str, imm:i64) -> Self {
         let (inc_name, inc_type) = Self::get_inc_and_inc_type("ori").unwrap();
         Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions)
@@ -268,11 +276,32 @@ impl Instruction {
         if Self::is_near(imm) {
             let r = Self::new_addi(rd, "x0", imm);
             Ok(vec![r])
-        } else if can_fits_in_32bit(imm) {
-            let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
-            let r  = Self::new_lui(rd, high.into());
-            let r2 = Self::new_addi(rd, rd, low.into());
-            Ok(vec![r, r2])
+        } else if can_fits_in_32bit(imm) {            
+            // if high's 31th bit is 1, need to set the highest bit and then process rest of 31 bits
+            if imm & 0x8000_0000 != 0 {
+                let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
+                let r  = Self::new_lui(rd, high.into());
+                let r_shiftleft = Self::new_slli(rd, rd, 32);
+                let r_shiftright = Self::new_srli(rd, rd, 32);
+                if low == 0 {
+                    Ok(vec![r, r_shiftleft, r_shiftright])
+                }
+                else {
+                    let r2 = Self::new_addi(rd, rd, low.into());
+                    Ok(vec![r, r2, r_shiftleft, r_shiftright])
+                }
+            }
+            else {
+                let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
+                let r  = Self::new_lui(rd, high.into());
+                if low == 0 {
+                    Ok(vec![r])
+                }
+                else {
+                    let r2 = Self::new_addi(rd, rd, low.into());
+                    Ok(vec![r, r2])
+                }
+            }            
         } else {
             Self::li_to_incs(rd, imm)
         }
