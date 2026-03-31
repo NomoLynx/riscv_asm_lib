@@ -86,8 +86,12 @@ fn main() {
 
     let macro_instruction_md = Path::new("src/r5asm/macro_instruction/macro_instruction.md");
     println!("cargo:rerun-if-changed={}", macro_instruction_md.display());
+
     let r5asm_pest = Path::new("src/r5asm/r5asm.pest");
     println!("cargo:rerun-if-changed={}", r5asm_pest.display());
+
+    let vector_inc_md = Path::new("src/r5asm/vector_incs/vector_inc.md");
+    println!("cargo:rerun-if-changed={}", vector_inc_md.display());
 
     let markdown = fs::read_to_string(macro_instruction_md)
         .expect("failed to read macro_instruction.md");
