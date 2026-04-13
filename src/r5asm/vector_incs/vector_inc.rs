@@ -1,12 +1,46 @@
 use rust_macro::*;
 use rust_macro_internal::*;
 
+#[csv2enum_variants("src/r5asm/vector_incs/value_from.csv", type_name)]
+pub enum ValueFrom { }
+
+#[csv2enum_variants("src/r5asm/vector_incs/value_op.csv", type_name)]
+pub enum ValueOp { }
+
+enum ValueSrc {
+    Vs1(u8),   // for VV
+    Rs1(u8),   // for VX
+    Imm(i8),   // for VI
+}
+
 #[packet_bit_vec("src/r5asm/vector_incs/vector_inc.mmd")]
 #[repr(C)]
 #[derive(Clone, PartialEq, Eq)]
 #[derive(Accessors)]
 pub struct VectorInc {
 
+}
+
+impl VectorInc {
+    fn encode_rvv_base(
+        opcode: u8,
+        funct3: u8,
+        funct6: u8,
+        vd: u8,
+        vs2: u8,
+        rs1: u8,
+        vm: bool,
+    ) -> VectorInc {
+        let mut inc = VectorInc::new();
+        inc.set_opcode_bits(opcode.into());
+        inc.set_rd_bits(vd.into());
+        inc.set_funct3_bits(funct3.into());
+        inc.set_rs1_bits(rs1.into());
+        inc.set_vs2_bits(vs2.into());
+        inc.set_vm_bits((vm as u8).into());
+        inc.set_funct6_bits(funct6.into());
+        inc
+    }
 }
 
 /// test to generate a vector inc instruction and print its machine code

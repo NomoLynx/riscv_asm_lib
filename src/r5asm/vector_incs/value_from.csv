@@ -1,0 +1,4 @@
+type_name,type_size
+VV,0b000
+VX,0b100
+VI,0b011
