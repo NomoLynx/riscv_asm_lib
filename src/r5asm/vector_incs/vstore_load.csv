@@ -1,0 +1,4 @@
+name,size
+UnitStride,0b000000
+Strided,0b010000
+Indexed,0b100000

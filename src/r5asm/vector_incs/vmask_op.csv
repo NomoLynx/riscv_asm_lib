@@ -1,0 +1,5 @@
+name,value
+And,0b011001
+Or,0b011010
+Xor,0b011011
+Not,0b011100
