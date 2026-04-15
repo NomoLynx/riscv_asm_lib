@@ -67,6 +67,20 @@ The assembler supports the following extension families (instruction names are d
 - This library accepts a practical subset used by the project and does not claim full ratified coverage of every optional RISC-V extension variant.
 - Extension support is best validated by checking `src/r5asm/r5asm.pest` and `src/r5asm/opcode/opcode.rs` together.
 
+### Pseudo-instruction note: `li rd, <imm>`
+
+- `li` is the standard load-immediate pseudo-instruction.
+- In `li rd, <imm>`, `<imm>` means an immediate integer value or constant expression.
+- In this project, the `li` expansion currently assumes the target machine is **64-bit** (`RV64`).
+- Large immediate values may therefore be expanded using RV64-oriented instruction sequences.
+
+Example:
+
+```asm
+li a0, 123
+li t0, 0x123456789abcdef0
+```
+
 ### Instruction Test Coverage (Bit-Manip)
 
 Recent instruction additions in the bit-manip groups are covered by dedicated assembly tests:
