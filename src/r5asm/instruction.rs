@@ -292,6 +292,72 @@ impl Instruction {
             .with_imm(imm.to_string().into())
     }
 
+    fn generate_load_32bit_imm_incs(rd:&str, imm:i64) -> Result<Vec<Self>, AsmError> {
+        assert!(can_fits_in_32bit(imm));
+
+        let r_shiftleft = Self::new_slli(rd, rd, 32);
+        let r_shiftright = Self::new_srli(rd, rd, 32);
+
+        if imm < 0 {
+            let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
+            let r  = Self::new_lui(rd, high.into());
+            
+            if low == 0 {
+                Ok(vec![r])
+            }
+            else {
+                let r2 = Self::new_addi(rd, rd, low.into());
+                Ok(vec![r, r2])
+            }
+        }
+        else {
+            if can_fits_in_32i(imm) {
+                let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
+                let r  = Self::new_lui(rd, high.into());
+                if low == 0 {
+                    if high & 0x8_0000 == 0 {
+                        Ok(vec![r])
+                    }
+                    else {
+                        Ok(vec![r, r_shiftleft, r_shiftright])
+                    }
+                }
+                else {
+                    if high & 0x8_0000 == 0 {
+                        let r2 = Self::new_addi(rd, rd, low.into());
+                        Ok(vec![r, r2])
+                    }
+                    else {
+                        let r2 = Self::new_addi(rd, rd, low.into());
+                        Ok(vec![r, r2, r_shiftleft, r_shiftright])
+                    }
+                }
+            }
+            else {
+                let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
+                let r  = Self::new_lui(rd, high.into());
+                if low == 0 {
+                    if high & 0x8_0000 == 0 {
+                        Ok(vec![r, r_shiftleft, r_shiftright])
+                    }
+                    else {
+                        Ok(vec![r, r_shiftleft, r_shiftright])
+                    }
+                }
+                else {
+                    if high & 0x8_0000 == 0 {
+                        let r2 = Self::new_addi(rd, rd, low.into());
+                        Ok(vec![r, r2, r_shiftleft, r_shiftright])
+                    }
+                    else {
+                        let r2 = Self::new_addi(rd, rd, low.into());
+                        Ok(vec![r, r2, r_shiftleft, r_shiftright])
+                    }
+                }
+            }
+        }    
+    }
+
     /// Expand a `li rd, imm` pseudo-instruction into real instructions for any imm width.
     /// Near (-2048..=2047)   → addi rd, x0, imm
     /// 32-bit                → lui + addi
@@ -302,30 +368,7 @@ impl Instruction {
             Ok(vec![r])
         } else if can_fits_in_32bit(imm) {            
             // if high's 31th bit is 1, need to set the highest bit and then process rest of 31 bits
-            if imm & 0x8000_0000 != 0 {
-                let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
-                let r  = Self::new_lui(rd, high.into());
-                let r_shiftleft = Self::new_slli(rd, rd, 32);
-                let r_shiftright = Self::new_srli(rd, rd, 32);
-                if low == 0 {
-                    Ok(vec![r, r_shiftleft, r_shiftright])
-                }
-                else {
-                    let r2 = Self::new_addi(rd, rd, low.into());
-                    Ok(vec![r, r2, r_shiftleft, r_shiftright])
-                }
-            }
-            else {
-                let (low, high) = Self::get_low12_and_high_with_sign_process(imm);
-                let r  = Self::new_lui(rd, high.into());
-                if low == 0 {
-                    Ok(vec![r])
-                }
-                else {
-                    let r2 = Self::new_addi(rd, rd, low.into());
-                    Ok(vec![r, r2])
-                }
-            }            
+            Self::generate_load_32bit_imm_incs(rd, imm)
         } else {
             Self::li_to_incs(rd, imm)
         }
@@ -340,32 +383,29 @@ impl Instruction {
         let imm_high32 = (imm as u64) >> 32;
         let imm_low32 = imm as u64 & 0xFFFFFFFF;
 
-        let (low, high) = Self::get_low12_and_high_with_sign_process(imm_high32 as i64);
-        let r = Self::new_lui(rd, high.into());
-        let r2 = Self::new_addi(rd, rd, low.into());
-        instrs.push(r);
-        instrs.push(r2);
+        let load_high_32 = Self::generate_load_32bit_imm_incs(rd, imm_high32 as i64)?;
+        instrs.extend(load_high_32);
 
-        // the rest 32 bits can be loaded with slli and ori, ori only handle 12 bits
-        let top8  = (imm_low32 >> 24) & 0xFF;
-        let mid12 = (imm_low32 >> 12) & 0xFFF;
-        let bot12 = (imm_low32 >>  0) & 0xFFF;
+        // the rest 32 bits can be loaded with slli and ori, ori only handle 10, 11, 11 bits
+        let top8  = (imm_low32 >> 22) & 0x3FF;
+        let mid12 = (imm_low32 >> 11) & 0x7FF;
+        let bot12 = (imm_low32 >>  0) & 0x7FF;
         
-        let shift_top8 = Self::new_slli(rd, rd, 8);
+        let shift_top8 = Self::new_slli(rd, rd, 10);
         instrs.push(shift_top8);
         if top8 != 0 {
             let r = Self::new_ori(rd, rd, top8 as i64);
             instrs.push(r);
         }
 
-        let shift_mid12 = Self::new_slli(rd, rd, 12);
+        let shift_mid12 = Self::new_slli(rd, rd, 11);
         instrs.push(shift_mid12);
         if mid12 != 0 {
             let r = Self::new_ori(rd, rd, mid12 as i64);
             instrs.push(r);
         }
 
-        let shift_bot12 = Self::new_slli(rd, rd, 12);
+        let shift_bot12 = Self::new_slli(rd, rd, 11);
         instrs.push(shift_bot12);
         if bot12 != 0 {
             let r = Self::new_ori(rd, rd, bot12 as i64);
@@ -398,10 +438,14 @@ impl Instruction {
         
         let extension_inc = inner.into_inner().nth(0).unwrap();
         let inc_name = Self::get_inc(&extension_inc)?;
-        let inc_type = OpCode::get_instruction_type_from_string(&inc_name)?;
         let extention_type = 
             if inner_rule == Rule::pseudoinstructions { BasicInstructionExtensions::PseudoInstructions } 
             else { Self::get_inc_extension_type(&extension_inc)? };
+        let inc_type = if extention_type == BasicInstructionExtensions::RvVInstructions {
+            InstructionTypes::UnKnown
+        } else {
+            OpCode::get_instruction_type_from_string(&inc_name)?
+        };
 
         match inner_rule {
             Rule::basic_instructions => {

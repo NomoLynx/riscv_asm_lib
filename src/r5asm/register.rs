@@ -76,6 +76,39 @@ impl Register {
         from_abi.insert("X29", 29);
         from_abi.insert("X30", 30);
         from_abi.insert("X31", 31);
+
+        from_abi.insert("V0", 0);
+        from_abi.insert("V1", 1);
+        from_abi.insert("V2", 2);
+        from_abi.insert("V3", 3);
+        from_abi.insert("V4", 4);
+        from_abi.insert("V5", 5);
+        from_abi.insert("V6", 6);
+        from_abi.insert("V7", 7);
+        from_abi.insert("V8", 8);
+        from_abi.insert("V9", 9);
+        from_abi.insert("V10", 10);
+        from_abi.insert("V11", 11);
+        from_abi.insert("V12", 12);
+        from_abi.insert("V13", 13);
+        from_abi.insert("V14", 14);
+        from_abi.insert("V15", 15);
+        from_abi.insert("V16", 16);
+        from_abi.insert("V17", 17);
+        from_abi.insert("V18", 18);
+        from_abi.insert("V19", 19);
+        from_abi.insert("V20", 20);
+        from_abi.insert("V21", 21);
+        from_abi.insert("V22", 22);
+        from_abi.insert("V23", 23);
+        from_abi.insert("V24", 24);
+        from_abi.insert("V25", 25);
+        from_abi.insert("V26", 26);
+        from_abi.insert("V27", 27);
+        from_abi.insert("V28", 28);
+        from_abi.insert("V29", 29);
+        from_abi.insert("V30", 30);
+        from_abi.insert("V31", 31);
         from_abi.insert("", 0);
 
         //float reg

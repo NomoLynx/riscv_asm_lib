@@ -25,6 +25,7 @@ use super::r5asm_pest::{EquTable, InstructionRegisterName, InstructionTypes, Rul
 use super::register::Register;
 use super::section::Section;
 use super::traits::{SectionSizeTrait, ToMarkdown};
+use super::vector_incs::vector_emitter::emit_vector_instruction;
 use super::{OPTIMIZE_CODE_GEN, OPTIMIZE_TO_COMPACT_CODE, asm_error::*, reverse_string};
 use core_utils::debug::*;
 
@@ -981,16 +982,20 @@ impl AsmProgram {
 
     pub fn get_machine_code_list(&self, item:&SectionItem2, regs:&Register, labels:&LabelTable) -> Result<Vec<MachineCode>, AsmError> {
         let inc = item.get_inc().unwrap();
+        let inc_offset = item.get_offset();
 
         if !inc.is_generate {
             return Ok(Vec::default());
+        }
+
+        if inc.inc_extensions_and_type == BasicInstructionExtensions::RvVInstructions {
+            return emit_vector_instruction(inc, regs, inc_offset);
         }
 
         // debug_string(format!("Generate binary for {inc:?} @ 0x{:x}", item.offset));
         let op_code = inc.get_op_code()?;
         let inc_type = op_code.get_instruction_type();
         let op_code_str = format!("{:0>7b}", op_code.get_value());
-        let inc_offset = item.get_offset();
         let rr = match inc_type {
             InstructionTypes::B => {
                 let rs1 = inc.get_register_id_as_string(InstructionRegisterName::Rs0, regs)?;

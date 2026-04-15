@@ -16,6 +16,7 @@ pub (crate) enum BasicInstructionExtensions {
     Rv64a128aInstructions,
     RvfInstructions,
     Rvf64128Instructions,
+    RvVInstructions,
     PseudoInstructions,
     CompactInstructions,
     Unknown,  //this only for internal use and should NOT used in asm parsing or asm code generation
@@ -40,6 +41,7 @@ impl BasicInstructionExtensions {
             "rv64a_128a_instructions" => Some(Self::Rv64a128aInstructions),
             "rvf_instructions" => Some(Self::RvfInstructions),
             "rvf64_128_instructions" => Some(Self::Rvf64128Instructions),
+            "rv_v_instructions" => Some(Self::RvVInstructions),
             "pseudoinstructions" => Some(Self::PseudoInstructions),
             "compactinstructions" => Some(Self::CompactInstructions),
             _ => None,
@@ -65,6 +67,7 @@ impl std::fmt::Debug for BasicInstructionExtensions {
             Self::RvcInstructions => "RVC",
             Self::Rvf64128Instructions => "RVF64_128",
             Self::RvfInstructions => "RVF",
+            Self::RvVInstructions => "RVV",
             Self::Rvm32Instructions => "RVM32",
             Self::Rvm64128Instructions => "RVM64_128",
             Self::CompactInstructions => "Compact",
