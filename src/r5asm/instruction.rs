@@ -89,10 +89,19 @@ impl Instruction {
 
     fn process_shamt_value(inc_name:&String, p2:&Pair<Rule>) -> Result<String, AsmError> {
         let imm = match inc_name.to_lowercase().as_str() {
-            "slliw"| 
-            "srliw" |
-            "sraiw" => {
+            "slliw" |
+            "srliw" => {
                 let imm_value = pair_to_i64(p2)? & 0x1f;
+                format!("{imm_value}")
+            }
+            "srai" => {
+                // srai encodes arithmetic shift with imm[11:5]=0b0100000 and shamt in imm[4:0] (or imm[5:0] on RV64).
+                let imm_value = (pair_to_i64(p2)? & 0x3f) | 0x400;
+                format!("{imm_value}")
+            }
+            "sraiw" => {
+                // sraiw encodes arithmetic shift with imm[11:5]=0b0100000 and shamt in imm[4:0].
+                let imm_value = (pair_to_i64(p2)? & 0x1f) | 0x400;
                 format!("{imm_value}")
             }
             "rori" => {

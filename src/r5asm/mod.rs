@@ -341,4 +341,24 @@ cpopw x1, x2\n";
 
         assert_eq!(words, expected);
     }
+
+    #[test]
+    fn test_shift_right_arithmetic_immediate_encoding() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+srai x1, x2, 3\n\
+sraiw x1, x2, 3\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("srai snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x4031_5093, // srai x1, x2, 3
+            0x4031_509B, // sraiw x1, x2, 3
+        ];
+
+        assert_eq!(words, expected);
+    }
 }
