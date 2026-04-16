@@ -1,5 +1,5 @@
 /// Risc V assemble language
-asm_prog = { SOI ~ section* ~ EOI }
+asm_prog = { SOI ~ (option_directive)* ~ section* ~ EOI }
 
 section = { section_tag ~ (label | instruction | directive)* }
 
@@ -57,9 +57,12 @@ string_directive_name = { ".string" | ".asciz" }
 equ_directive = _{ #inc_name = equ_directive_name ~ identifier ~ "," ~ (integer | string | identifier) }
 equ_directive_name = { ".equ" }
 
-option_directive = _{ #inc_name = option_directive_name ~ option_directive_param }
+option_directive = _{ #inc_name = option_directive_name ~ option_directive_param ~ ("," ~ option_directive_param)* }
 option_directive_name = { ".option" }
-option_directive_param = { "arch" | "rvc" | "norvc" | "pic" | "nopic" | "relax" | "norelax" | "push" | "pop" }
+option_directive_param = { 
+    "arch" | "rvc" | "norvc" | "pic" | "nopic" | "relax" | "norelax" | "push" | "pop" |
+    "+v"  //vector extension enabled
+}
 
 byte_directive = _{ #inc_name = byte_directive_name ~ expression ~ ("," ~ expression)* }
 byte_directive_name = { ".byte" | ".2byte" | ".4byte" | ".8byte" | ".short" | ".long" | ".quad" | ".half" | ".float" | ".double" | ".dword" | ".word" | ".dtprelword" | ".dtpreldworld" }
@@ -348,6 +351,9 @@ rvf64_128_convert_incs = @{
 }
 
 rv_v_instructions = {
+    #inc_name = rv_v_set_vli_incs ~ rd ~ "," ~ rs1 ~ "," ~ vtypei |
+    #inc_name = rv_v_set_ivli_incs ~ rd ~ "," ~ integer ~ "," ~ vtypei |
+    #inc_name = rv_v_set_vl_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 |
     #inc_name = rv_v_valu_vv_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)? |
     #inc_name = rv_v_valu_vx_incs ~ rd ~ "," ~ rs1 ~ "," ~ rs2 ~ ("," ~ option)? |
     #inc_name = rv_v_valu_vi_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm ~ ("," ~ option)? |
@@ -360,14 +366,22 @@ rv_v_instructions = {
     #inc_name = rv_v_store_incs ~ rs2 ~ "," ~ rs1 ~ "," ~ rd
 }
 
+rv_v_set_vli_incs = { ^"vsetvli" }
+rv_v_set_ivli_incs = { ^"vsetivli" }
+rv_v_set_vl_incs = { ^"vsetvl" }
 rv_v_valu_vv_incs = { (^"vadd.vv" | ^"vsub.vv" | ^"vmul.vv" | ^"vdiv.vv" | ^"vdivu.vv" | ^"vrem.vv" | ^"vremu.vv" | ^"vmin.vv" | ^"vminu.vv" | ^"vmax.vv" | ^"vmaxu.vv" | ^"vand.vv" | ^"vor.vv" | ^"vxor.vv" | ^"vsll.vv" | ^"vsrl.vv" | ^"vsra.vv") }
 rv_v_valu_vx_incs = { (^"vadd.vx" | ^"vsub.vx" | ^"vmul.vx" | ^"vdiv.vx" | ^"vdivu.vx" | ^"vrem.vx" | ^"vremu.vx" | ^"vmin.vx" | ^"vminu.vx" | ^"vmax.vx" | ^"vmaxu.vx" | ^"vand.vx" | ^"vor.vx" | ^"vxor.vx" | ^"vsll.vx" | ^"vsrl.vx" | ^"vsra.vx") }
 rv_v_valu_vi_incs = { (^"vadd.vi" | ^"vand.vi" | ^"vor.vi" | ^"vxor.vi" | ^"vsll.vi" | ^"vsrl.vi" | ^"vsra.vi") }
 rv_v_reduction_incs = { (^"vredsum.vs" | ^"vredmin.vs" | ^"vredmax.vs") }
 rv_v_mask_incs = { (^"vand.mm" | ^"vor.mm" | ^"vxor.mm") }
 rv_v_mask_not_incs = { ^"vnot.m" }
-rv_v_load_incs = { (^"vl1re8.v" | ^"vl1re16.v" | ^"vl1re32.v" | ^"vl1re64.v" | ^"vlse8.v" | ^"vlse16.v" | ^"vlse32.v" | ^"vlse64.v" | ^"vluxei8.v" | ^"vluxei16.v" | ^"vluxei32.v" | ^"vluxei64.v" | ^"vloxei8.v" | ^"vloxei16.v" | ^"vloxei32.v" | ^"vloxei64.v") }
-rv_v_store_incs = { (^"vs1r.v" | ^"vsse8.v" | ^"vsse16.v" | ^"vsse32.v" | ^"vsse64.v" | ^"vsuxei8.v" | ^"vsuxei16.v" | ^"vsuxei32.v" | ^"vsuxei64.v" | ^"vsoxei8.v" | ^"vsoxei16.v" | ^"vsoxei32.v" | ^"vsoxei64.v") }
+rv_v_load_incs = { (^"vle8.v" | ^"vle16.v" | ^"vle32.v" | ^"vle64.v" | ^"vl1re8.v" | ^"vl1re16.v" | ^"vl1re32.v" | ^"vl1re64.v" | ^"vlse8.v" | ^"vlse16.v" | ^"vlse32.v" | ^"vlse64.v" | ^"vluxei8.v" | ^"vluxei16.v" | ^"vluxei32.v" | ^"vluxei64.v" | ^"vloxei8.v" | ^"vloxei16.v" | ^"vloxei32.v" | ^"vloxei64.v") }
+rv_v_store_incs = { (^"vse8.v" | ^"vse16.v" | ^"vse32.v" | ^"vse64.v" | ^"vs1r.v" | ^"vsse8.v" | ^"vsse16.v" | ^"vsse32.v" | ^"vsse64.v" | ^"vsuxei8.v" | ^"vsuxei16.v" | ^"vsuxei32.v" | ^"vsuxei64.v" | ^"vsoxei8.v" | ^"vsoxei16.v" | ^"vsoxei32.v" | ^"vsoxei64.v") }
+vtypei = { v_sew ~ "," ~ v_lmul ~ ("," ~ v_tail_policy ~ "," ~ v_mask_policy)? }
+v_sew = _{ ^"e8" | ^"e16" | ^"e32" | ^"e64" | ^"e128" | ^"e256" | ^"e512" | ^"e1024" }
+v_lmul = _{ ^"mf8" | ^"mf4" | ^"mf2" | ^"m1" | ^"m2" | ^"m4" | ^"m8" }
+v_tail_policy = _{ ^"ta" | ^"tu" }
+v_mask_policy = _{ ^"ma" | ^"mu" }
 
 sdq = _{ ^"s" | ^"d" | ^"q" }
 hsdq = _{ ^"h" | ^"s" | ^"d" | ^"q" }

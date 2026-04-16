@@ -460,6 +460,16 @@ impl Instruction {
             Rule::basic_instructions => {
                 let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
                 match rules.as_slice() {
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::vtypei, p2)] => {
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_option_value(p2.as_str());
+                        Ok([r].to_vec())
+                    }
+                    [_, (Rule::registers, p), (Rule::integer, p1), (Rule::vtypei, p2)] => {
+                        let mut r = Self::new_r0_imm(inc_name, inc_type, extention_type, p, p1);
+                        r.set_option_value(p2.as_str());
+                        Ok([r].to_vec())
+                    }
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2), (Rule::option, option)] =>
                         Ok([Self::new_r0_r1_r2_option(inc_name, inc_type, extention_type, p, p1, p2, option)].to_vec()), 
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] |
@@ -1486,6 +1496,10 @@ impl Instruction {
         self.option = Some(p.as_str().to_string())
     }
 
+    pub (crate) fn set_option_value(&mut self, value:&str) {
+        self.option = Some(value.to_string())
+    }
+
     pub fn set_r0(&mut self, p:&Pair<Rule>) {
         self.r0_name = Some(p.as_str().to_string())
     }
@@ -1773,6 +1787,9 @@ impl Instruction {
     pub fn get_instruction_size(&self) -> Result<usize, AsmError> {
         if self.is_pseodu_inc() {
             Ok(4 * 2)   //  return as 2 instruction size
+        }
+        else if self.inc_extensions_and_type == BasicInstructionExtensions::RvVInstructions {
+            Ok(4)
         }
         else {
             let r = self.get_op_code()?.get_instruction_size() as usize;

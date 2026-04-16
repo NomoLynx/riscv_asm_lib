@@ -165,6 +165,48 @@ impl VectorInc {
 
         Self::encode_rvv_base(opcode, funct3, funct6, vd, vs2_val, vs1, true)
     }
+
+    pub fn encode_vsetvli(
+        rd: u8,
+        avl_reg: u8,
+        vtypei: u16,
+    ) -> VectorInc {
+        let opcode = 0b1010111;
+        let funct3 = 0b111;
+        let immediate = vtypei & 0x07ff;
+        let funct6 = ((immediate >> 6) & 0b11_1111) as u8;
+        let vm = ((immediate >> 5) & 0b1) != 0;
+        let vs2 = (immediate & 0b1_1111) as u8;
+
+        Self::encode_rvv_base(opcode, funct3, funct6, rd, vs2, avl_reg, vm)
+    }
+
+    pub fn encode_vsetivli(
+        rd: u8,
+        avl_imm: u8,
+        vtypei: u16,
+    ) -> VectorInc {
+        let opcode = 0b1010111;
+        let funct3 = 0b111;
+        let immediate = 0b1100_0000_0000u16 | (vtypei & 0x03ff);
+        let funct6 = ((immediate >> 6) & 0b11_1111) as u8;
+        let vm = ((immediate >> 5) & 0b1) != 0;
+        let vs2 = (immediate & 0b1_1111) as u8;
+
+        Self::encode_rvv_base(opcode, funct3, funct6, rd, vs2, avl_imm & 0b1_1111, vm)
+    }
+
+    pub fn encode_vsetvl(
+        rd: u8,
+        avl_reg: u8,
+        vtype_reg: u8,
+    ) -> VectorInc {
+        let opcode = 0b1010111;
+        let funct3 = 0b111;
+        let funct6 = 0b100000;
+
+        Self::encode_rvv_base(opcode, funct3, funct6, rd, vtype_reg, avl_reg, false)
+    }
 }
 
 /// test to generate a vector inc instruction and print its machine code

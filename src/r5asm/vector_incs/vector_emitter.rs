@@ -1,5 +1,8 @@
 use super::vector_inc::{VMaskOp, VRedOp, ValueOp, ValueSrc, VectorInc};
-use super::vector_pest::{base_vector_mnemonic, parse_value_form, parse_vload_kind, parse_vstore_kind, parse_vm_from_option, parse_vwidth};
+use super::vector_pest::{
+    base_vector_mnemonic, parse_value_form, parse_vload_kind, parse_vstore_kind,
+    parse_vm_from_option, parse_vtypei, parse_vwidth,
+};
 use crate::r5asm::asm_error::AsmError;
 use crate::r5asm::instruction::Instruction;
 use crate::r5asm::machinecode::MachineCode;
@@ -10,6 +13,31 @@ fn parse_reg_id(inc: &Instruction, regs: &Register, reg: InstructionRegisterName
     let bits = inc.get_register_id_as_string(reg, regs)?;
     u8::from_str_radix(&bits, 2)
         .map_err(|_| AsmError::ConversionFailed((file!(), line!()).into(), format!("cannot convert register bits '{bits}' to u8")))
+}
+
+fn parse_uimm5(inc: &Instruction, name: &str) -> Result<u8, AsmError> {
+    let imm = inc
+        .get_imm_value_from_imm_string()
+        .ok_or(AsmError::ConversionFailed((file!(), line!()).into(), format!("cannot parse AVL immediate for '{name}'")))?;
+
+    if !(0..=31).contains(&imm) {
+        return Err(AsmError::GeneralError(
+            (file!(), line!()).into(),
+            format!("AVL immediate for '{name}' must be in [0,31], got {imm}"),
+        ));
+    }
+
+    Ok(imm as u8)
+}
+
+fn parse_vtype_bits(inc: &Instruction, name: &str) -> Result<u16, AsmError> {
+    inc.option
+        .as_deref()
+        .and_then(parse_vtypei)
+        .ok_or(AsmError::NoFound(
+            (file!(), line!()).into(),
+            format!("cannot parse vtypei for '{name}' from {:?}", inc.option),
+        ))
 }
 
 fn value_op_from_abstract_name(name: &str) -> Result<ValueOp, AsmError> {
@@ -67,13 +95,38 @@ fn mask_op_from_mnemonic(name: &str) -> Result<VMaskOp, AsmError> {
 
 fn to_machine_code(vector_inc: VectorInc, offset: usize) -> MachineCode {
     let bytes = vector_inc.to_le_bytes();
-    let raw = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+    let raw = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
     MachineCode::new(raw, offset)
 }
 
 pub fn emit_vector_instruction(inc: &Instruction, regs: &Register, offset: usize) -> Result<Vec<MachineCode>, AsmError> {
     let name = inc.get_name().to_lowercase();
     let base = base_vector_mnemonic(&name);
+
+    if base == "vsetvl" {
+        let rd = parse_reg_id(inc, regs, InstructionRegisterName::Rd)?;
+        let rs1 = parse_reg_id(inc, regs, InstructionRegisterName::Rs1)?;
+        let rs2 = parse_reg_id(inc, regs, InstructionRegisterName::Rs2)?;
+        let encoded = VectorInc::encode_vsetvl(rd, rs1, rs2);
+        return Ok(vec![to_machine_code(encoded, offset)]);
+    }
+
+    if base == "vsetvli" {
+        let rd = parse_reg_id(inc, regs, InstructionRegisterName::Rd)?;
+        let rs1 = parse_reg_id(inc, regs, InstructionRegisterName::Rs1)?;
+        let vtypei = parse_vtype_bits(inc, &name)?;
+        let encoded = VectorInc::encode_vsetvli(rd, rs1, vtypei);
+        return Ok(vec![to_machine_code(encoded, offset)]);
+    }
+
+    if base == "vsetivli" {
+        let rd = parse_reg_id(inc, regs, InstructionRegisterName::Rd)?;
+        let avl = parse_uimm5(inc, &name)?;
+        let vtypei = parse_vtype_bits(inc, &name)?;
+        let encoded = VectorInc::encode_vsetivli(rd, avl, vtypei);
+        return Ok(vec![to_machine_code(encoded, offset)]);
+    }
+
     let vm = parse_vm_from_option(inc.option.as_deref());
 
     // Reduction instructions: vred*.vs vd, vs2, vs1[, v0.t]
@@ -100,10 +153,7 @@ pub fn emit_vector_instruction(inc: &Instruction, regs: &Register, offset: usize
         return Ok(vec![to_machine_code(encoded, offset)]);
     }
 
-    // Load instructions
-    if base.starts_with("vl") {
-        let kind = parse_vload_kind(base)
-            .ok_or(AsmError::NoFound((file!(), line!()).into(), format!("cannot infer vload kind from '{base}'")))?;
+    if let Some(kind) = parse_vload_kind(base) {
         let width = parse_vwidth(base)
             .ok_or(AsmError::NoFound((file!(), line!()).into(), format!("cannot infer vload width from '{base}'")))?;
         let vd = parse_reg_id(inc, regs, InstructionRegisterName::Rd)?;
@@ -117,10 +167,7 @@ pub fn emit_vector_instruction(inc: &Instruction, regs: &Register, offset: usize
         return Ok(vec![to_machine_code(encoded, offset)]);
     }
 
-    // Store instructions
-    if base.starts_with("vs") {
-        let kind = parse_vstore_kind(base)
-            .ok_or(AsmError::NoFound((file!(), line!()).into(), format!("cannot infer vstore kind from '{base}'")))?;
+    if let Some(kind) = parse_vstore_kind(base) {
         let width = parse_vwidth(base)
             .ok_or(AsmError::NoFound((file!(), line!()).into(), format!("cannot infer vstore width from '{base}'")))?;
         let vs3 = parse_reg_id(inc, regs, InstructionRegisterName::Rd)?;

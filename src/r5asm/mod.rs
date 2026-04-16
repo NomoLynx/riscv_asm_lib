@@ -287,7 +287,7 @@ maxu x1, x2, x3\n";
             0x6051_1093, // sext.h x1, x2
             0x2871_5093, // orc.b x1, x2
             0x6B81_5093, // rev8 x1, x2
-            0x0801_40B3, // zext.h x1, x2
+            0x0801_40BB, // zext.h x1, x2 (RV64 alias to packw rd, rs1, x0)
             0x0A31_40B3, // min x1, x2, x3
             0x0A31_50B3, // minu x1, x2, x3
             0x0A31_60B3, // max x1, x2, x3
@@ -357,6 +357,75 @@ sraiw x1, x2, 3\n";
         let expected = vec![
             0x4031_5093, // srai x1, x2, 3
             0x4031_509B, // sraiw x1, x2, 3
+        ];
+
+        assert_eq!(words, expected);
+    }
+
+    #[test]
+    fn test_rvv_vset_instruction_parser_acceptance() {
+        let cases = [
+            "vsetvli x5, x6, e32, m1, ta, ma",
+            "vsetivli x7, 9, e16, mf2, tu, mu",
+            "vsetvl x8, x9, x10",
+        ];
+
+        for case in cases {
+            let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, case);
+            assert!(parsed.is_ok(), "failed to parse RVV vset instruction: {case}");
+        }
+    }
+
+    #[test]
+    fn test_rvv_unit_stride_load_store_acceptance() {
+        let cases = [
+            "vle32.v v1, (x2)",
+            "vse32.v v1, (x2)",
+        ];
+
+        for case in cases {
+            let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, case);
+            assert!(parsed.is_ok(), "failed to parse RVV unit-stride load/store: {case}");
+        }
+    }
+
+    #[test]
+    fn test_rvv_vset_instruction_encoding() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vsetvli x5, x6, e32, m1, ta, ma\n\
+vsetivli x7, 9, e16, mf2, tu, mu\n\
+vsetvl x8, x9, x10\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv vset snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x0D03_72D7, // vsetvli x5, x6, e32, m1, ta, ma
+            0xC0F4_F3D7, // vsetivli x7, 9, e16, mf2, tu, mu
+            0x80A4_F457, // vsetvl x8, x9, x10
+        ];
+
+        assert_eq!(words, expected);
+    }
+
+    #[test]
+    fn test_rvv_unit_stride_load_store_encoding() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vle32.v v1, (x2)\n\
+vse32.v v1, (x2)\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv unit-stride load/store snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x0201_6087, // vle32.v v1, (x2)
+            0x0201_60A7, // vse32.v v1, (x2)
         ];
 
         assert_eq!(words, expected);

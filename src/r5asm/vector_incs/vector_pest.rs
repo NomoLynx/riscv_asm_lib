@@ -36,7 +36,7 @@ pub fn parse_vstore_kind(inc_name: &str) -> Option<VStoreKind> {
         Some(VStoreKind::Indexed)
     } else if lower.starts_with("vsse") {
         Some(VStoreKind::Strided)
-    } else if lower.starts_with("vs") {
+    } else if lower.starts_with("vs1r") || lower.starts_with("vse") {
         Some(VStoreKind::UnitStride)
     } else {
         None
@@ -45,7 +45,7 @@ pub fn parse_vstore_kind(inc_name: &str) -> Option<VStoreKind> {
 
 pub fn parse_vwidth(inc_name: &str) -> Option<VWidth> {
     let lower = inc_name.to_ascii_lowercase();
-    if lower.contains("8") {
+    if lower.starts_with("vs1r") || lower.starts_with("vl1r") || lower.contains("8") {
         Some(VWidth::E8)
     } else if lower.contains("16") {
         Some(VWidth::E16)
@@ -56,6 +56,55 @@ pub fn parse_vwidth(inc_name: &str) -> Option<VWidth> {
     } else {
         None
     }
+}
+
+pub fn parse_vtypei(spec: &str) -> Option<u16> {
+    let normalized = spec.to_ascii_lowercase().replace(' ', "");
+    let parts = normalized
+        .split(',')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let vsew = match parts[0] {
+        "e8" => 0b000,
+        "e16" => 0b001,
+        "e32" => 0b010,
+        "e64" => 0b011,
+        "e128" => 0b100,
+        "e256" => 0b101,
+        "e512" => 0b110,
+        "e1024" => 0b111,
+        _ => return None,
+    };
+
+    let vlmul = match parts[1] {
+        "m1" => 0b000,
+        "m2" => 0b001,
+        "m4" => 0b010,
+        "m8" => 0b011,
+        "mf8" => 0b101,
+        "mf4" => 0b110,
+        "mf2" => 0b111,
+        _ => return None,
+    };
+
+    let mut vta = 0u16;
+    let mut vma = 0u16;
+    for part in parts.iter().skip(2) {
+        match *part {
+            "ta" => vta = 1,
+            "tu" => vta = 0,
+            "ma" => vma = 1,
+            "mu" => vma = 0,
+            _ => return None,
+        }
+    }
+
+    Some((vma << 7) | (vta << 6) | (vsew << 3) | vlmul)
 }
 
 pub fn base_vector_mnemonic(inc_name: &str) -> &str {
