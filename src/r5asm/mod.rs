@@ -391,6 +391,21 @@ sraiw x1, x2, 3\n";
     }
 
     #[test]
+    fn test_rvv_mask_and_reduction_parser_acceptance() {
+        let cases = [
+            "vand.mm v1, v2, v3",
+            "vxor.mm v4, v5, v6",
+            "vnot.m v7, v8",
+            "vredsum.vs v9, v10, v11",
+        ];
+
+        for case in cases {
+            let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, case);
+            assert!(parsed.is_ok(), "failed to parse RVV mask/reduction instruction: {case}");
+        }
+    }
+
+    #[test]
     fn test_rvv_vset_instruction_encoding() {
         set_test_cwd_for_r5asm_data();
 
@@ -462,5 +477,41 @@ vsub.vx v5, v3, t1\n";
         let words = decode_u32_words(&bytes);
 
         assert_eq!(words.len(), 2);
+    }
+
+    #[test]
+    fn test_rvv_wider_load_store_builds() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vle8.v v1, (x2)\n\
+vle16.v v2, (x3)\n\
+vle64.v v3, (x4)\n\
+vse8.v v1, (x2)\n\
+vse16.v v2, (x3)\n\
+vse64.v v3, (x4)\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv wider load/store snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 6);
+    }
+
+    #[test]
+    fn test_rvv_mask_immediate_and_reduction_builds() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vsetvli t0, a0, e32, m1, ta, ma\n\
+vadd.vi v1, v2, 7\n\
+vand.mm v3, v4, v5\n\
+vredsum.vs v6, v7, v8\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv mask/immediate/reduction snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 4);
     }
 }
