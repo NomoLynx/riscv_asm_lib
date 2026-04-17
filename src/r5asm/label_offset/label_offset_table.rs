@@ -33,12 +33,23 @@ impl LabelOffsetTable {
         }
         else {
             let (back, foward) = self.get_back_forward_label_offset(label, offset, related_label);
-            if target_label.is_backward() {
+            let r = if target_label.is_backward() {
                 back
             } else if target_label.is_forward() {
                 foward
             } else {
                 None // Should not happen, as we check for normal labels above
+            };
+
+            // if the label is not found, 
+            // try to find the label with the same name
+            if r.is_none() {
+                self.entries().iter()
+                    .find(|entry| entry.label == target_label)
+                    .map(|entry| entry.offset)
+            }
+            else {
+                r
             }
         }
     }

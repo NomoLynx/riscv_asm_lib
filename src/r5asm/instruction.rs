@@ -1725,8 +1725,14 @@ impl Instruction {
         }
         else {
             if labels.contains_key(&imm) {  //get label's address
-                let v = labels.get_offset(&imm, offset, None).unwrap();
-                Ok(v as u32)
+                if let Some(v) = labels.get_offset(&imm, offset, None) {
+                    Ok(v as u32)
+                }
+                else {
+                    let err_str = format!("cannot get label '{imm}' address from label table");
+                    error_string(err_str.clone());
+                    Err(AsmError::NoFound((file!(), line!()).into(), err_str))
+                }
             } 
             else if regs.is_register_name(imm.clone()) {
                 regs.get_register_value(Some(&imm)).map(|x| x as u32)
