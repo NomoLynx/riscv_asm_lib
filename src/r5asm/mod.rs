@@ -431,4 +431,21 @@ vse32.v v1, (x2)\n";
 
         assert_eq!(words, expected);
     }
+
+    #[test]
+    fn test_rvv_value_operation_snippet_builds() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vsetvli t0, a0, e32, m1, ta, ma\n\
+vadd.vv v2, v0, v1\n\
+vadd.vx v3, v2, t1\n\
+vsub.vv v4, v1, v0\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv value operation snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 4);
+    }
 }
