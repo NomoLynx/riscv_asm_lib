@@ -448,4 +448,19 @@ vsub.vv v4, v1, v0\n";
 
         assert_eq!(words.len(), 4);
     }
+
+    #[test]
+    fn test_rvv_additional_value_operation_builds() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vsetvli t0, a0, e32, m1, ta, ma\n\
+vsub.vx v5, v3, t1\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("additional rvv value operation should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 2);
+    }
 }
