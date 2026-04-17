@@ -1,5 +1,5 @@
 /// Risc V assemble language
-asm_prog = { SOI ~ (option_directive)* ~ section* ~ EOI }
+asm_prog = { SOI ~ (global_option)* ~ section* ~ EOI }
 
 section = { section_tag ~ (label | instruction | directive)* }
 
@@ -57,6 +57,7 @@ string_directive_name = { ".string" | ".asciz" }
 equ_directive = _{ #inc_name = equ_directive_name ~ identifier ~ "," ~ (integer | string | identifier) }
 equ_directive_name = { ".equ" }
 
+global_option = { option_directive }
 option_directive = _{ #inc_name = option_directive_name ~ option_directive_param ~ ("," ~ option_directive_param)* }
 option_directive_name = { ".option" }
 option_directive_param = { 

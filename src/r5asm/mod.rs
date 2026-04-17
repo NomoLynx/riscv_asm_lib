@@ -31,6 +31,7 @@ pub mod asm_program;
 pub mod r5inc;
 pub mod md_data;
 pub mod vector_incs;
+pub mod code_option;
 
 pub static mut OPTIMIZE_CODE_GEN : bool = false;
 pub static mut OPTIMIZE_TO_COMPACT_CODE : bool = false;

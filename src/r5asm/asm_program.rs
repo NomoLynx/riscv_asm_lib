@@ -4,6 +4,8 @@ use core_utils::filesystem::write_to_file;
 use pest::iterators::Pair;
 
 use core_utils::traits::generate_code::GenerateCode;
+use crate::r5asm::code_option::option::CodeOption;
+
 use super::basic_instruction_extensions::BasicInstructionExtensions;
 use super::code_gen_config::CodeGenConfiguration;
 use super::compact_inc::get_machine_code_from_compact_inc;
@@ -32,17 +34,42 @@ use core_utils::debug::*;
 #[derive(Debug, Clone)]
 pub struct AsmProgram {
     sections : Vec<Section>,
+    options: Vec<CodeOption>, 
 }
 
 impl AsmProgram {
     pub (crate) fn from_pair(pair:&Pair<Rule>, config:&mut CodeGenConfiguration) -> Result<Self, AsmError> {
-        let section_options = from_pair_vec_null_fn_template(pair, Rule::asm_prog, config, |x, config| {
-            Section::from_pair(&x, config).unwrap()
-        })?;
+        let pairs = pair.to_owned().into_inner().into_iter().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
+        
+        let mut sections = Vec::default();
+        let mut options = Vec::default();
 
-        let sections = section_options.into_iter().filter_map(|x| x).collect::<Vec<_>>();
+        for (r, p) in pairs {
+            match r {
+                Rule::global_option => {
+                    let option_pairs = p.into_inner()
+                                        .filter(|x| x.as_rule() == Rule::option_directive_param)
+                                        .collect::<Vec<_>>();
+                    for option_pair in option_pairs {
+                        let str = option_pair.as_str().to_string();
+                        let option = CodeOption::from_str(&str)
+                                            .ok_or(AsmError::NoFound((file!(), line!()).into(), format!("cannot find code option for '{str}'")))?;
+                        options.push(option);
+                    }
+                },
+                Rule::section => {
+                    if let Some(section) = Section::from_pair(&p, config)? {
+                        sections.push(section);
+                    }
+                },
+                _ => {}
+            }
+        }
 
-        Ok(Self { sections })
+        Ok(Self {
+            sections,
+            options,
+        })
     }
 
     fn contains_external_symbol(&self) -> bool {
