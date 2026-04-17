@@ -397,6 +397,7 @@ sraiw x1, x2, 3\n";
             "vxor.mm v4, v5, v6",
             "vnot.m v7, v8",
             "vredsum.vs v9, v10, v11",
+            "vadd.vv v2, v0, v1, v0.t",
         ];
 
         for case in cases {
@@ -513,5 +514,24 @@ vredsum.vs v6, v7, v8\n";
         let words = decode_u32_words(&bytes);
 
         assert_eq!(words.len(), 4);
+    }
+
+    #[test]
+    fn test_rvv_masked_value_and_indexed_strided_builds() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vsetvli t0, a0, e32, m1, ta, ma\n\
+vadd.vv v2, v0, v1, v0.t\n\
+vlse32.v v3, x4, x5\n\
+vsse32.v v3, x4, x5\n\
+vluxei32.v v6, x7, x8\n\
+vsuxei32.v v6, x7, x8\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv masked/indexed/strided snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 6);
     }
 }
