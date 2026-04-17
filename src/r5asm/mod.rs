@@ -449,6 +449,55 @@ vse32.v v1, (x2)\n";
     }
 
     #[test]
+    fn test_rvv_div_encoding_is_distinct_from_add() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vadd.vv v2, v0, v1\n\
+vdiv.vv v2, v0, v1\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv add/div snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x0200_8157, // vadd.vv v2, v0, v1
+            0x8600_A157, // vdiv.vv v2, v0, v1
+        ];
+
+        assert_eq!(words, expected);
+        assert_ne!(words[0], words[1], "vdiv.vv must not alias vadd.vv");
+    }
+
+    #[test]
+    fn test_rvv_divrem_encoding_reference() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vdiv.vv v2, v0, v1\n\
+vdivu.vv v3, v0, v1\n\
+vrem.vv v4, v0, v1\n\
+vremu.vv v5, v0, v1\n\
+vdiv.vx v6, v0, x7\n\
+vrem.vx v8, v0, x9\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("rvv div/rem reference snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x8600_A157, // vdiv.vv v2, v0, v1
+            0x8200_A1D7, // vdivu.vv v3, v0, v1
+            0x8E00_A257, // vrem.vv v4, v0, v1
+            0x8A00_A2D7, // vremu.vv v5, v0, v1
+            0x8603_E357, // vdiv.vx v6, v0, x7
+            0x8E04_E457, // vrem.vx v8, v0, x9
+        ];
+
+        assert_eq!(words, expected);
+    }
+
+    #[test]
     fn test_rvv_value_operation_snippet_builds() {
         set_test_cwd_for_r5asm_data();
 
@@ -533,5 +582,75 @@ vsuxei32.v v6, x7, x8\n";
         let words = decode_u32_words(&bytes);
 
         assert_eq!(words.len(), 6);
+    }
+
+    #[test]
+    fn test_rvv_extended_value_operation_builds() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vsetvli t0, a0, e32, m1, ta, ma\n\
+vmul.vv v1, v2, v3\n\
+vdivu.vx v4, v5, t1\n\
+vminu.vv v6, v7, v8\n\
+vmaxu.vx v9, v10, t2\n\
+vor.vi v11, v12, 3\n\
+vsra.vi v13, v14, 1\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("extended rvv value operations should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 7);
+    }
+
+    #[test]
+    fn test_rvv_alternate_mask_reduction_and_ordered_indexed_builds() {
+        set_test_cwd_for_r5asm_data();
+
+        let input = ".text\n\
+vsetvli t0, a0, e32, m1, ta, ma\n\
+vor.mm v1, v2, v3\n\
+vnot.m v4, v5\n\
+vredmin.vs v6, v7, v8\n\
+vredmax.vs v9, v10, v11\n\
+vloxei32.v v12, x13, x14\n\
+vsoxei32.v v12, x13, x14\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("alternate rvv mask/reduction/indexed operations should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 7);
+    }
+
+    #[test]
+    fn test_rvv_vector_sample_files_build() {
+        set_test_cwd_for_r5asm_data();
+
+        let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../test_data/test_r5asm");
+        let cases = [
+            "vector_divrem_ops.s",
+            "vector_general.s",
+            "vector_logic_more_ops.s",
+            "vector_logic_ops.s",
+            "vector_minmax_more_ops.s",
+            "vector_minmax_ops.s",
+            "vector_shift_more_ops.s",
+            "vector_shift_ops.s",
+            "vector_vi_ops.s",
+            "vector_vx_ops.s",
+        ];
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        for case in cases {
+            let path = base.join(case);
+            let input = std::fs::read_to_string(&path)
+                .unwrap_or_else(|_| panic!("failed to read RVV sample file {}", path.display()));
+            let bytes = assembler::build_asm_snippet(&input, &params)
+                .unwrap_or_else(|_| panic!("rvv sample file should build: {}", path.display()));
+            assert!(!bytes.is_empty(), "rvv sample file produced no bytes: {}", path.display());
+        }
     }
 }

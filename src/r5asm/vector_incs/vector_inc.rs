@@ -51,6 +51,23 @@ pub struct VectorInc {
 }
 
 impl VectorInc {
+    fn uses_opmv_funct3(op: &ValueOp) -> bool {
+        matches!(
+            op,
+            ValueOp::Mul
+                | ValueOp::Div
+                | ValueOp::Divu
+                | ValueOp::Rem
+                | ValueOp::Remu
+                | ValueOp::Madd
+                | ValueOp::Nmsub
+                | ValueOp::Macc
+                | ValueOp::Nmacc
+                | ValueOp::Merge
+                | ValueOp::Move
+        )
+    }
+
     fn encode_rvv_base(
         opcode: u8,
         funct3: u8,
@@ -81,7 +98,13 @@ impl VectorInc {
     ) -> VectorInc {
         let opcode = 0b1010111;
 
-        let funct3 = form.lookup_size_valueform().unwrap() as u8;
+        let funct3 = match form {
+            ValueForm::VI => 0b011,
+            ValueForm::VV if Self::uses_opmv_funct3(&op) => 0b010,
+            ValueForm::VX if Self::uses_opmv_funct3(&op) => 0b110,
+            ValueForm::VV => 0b000,
+            ValueForm::VX => 0b100,
+        };
 
         let funct6 = op.lookup_size_valueop().unwrap() as u8;
 
