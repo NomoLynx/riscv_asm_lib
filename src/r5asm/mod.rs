@@ -116,6 +116,26 @@ pub (self) mod tests {
     }
 
     #[test]
+    fn test_instruction_source_locations_are_preserved() {
+        let mut config = code_gen_config::CodeGenConfiguration::default();
+        let items = instruction::Instruction::from_string("addi x1, x2, 123", &mut config)
+            .expect("instruction should parse");
+        let inc = items.first().expect("one instruction expected");
+
+        let name = inc.get_name_location().expect("name location should exist");
+        assert_eq!((name.start.line, name.start.column, name.end.column), (1, 1, 5));
+
+        let rd = inc.get_r0_location().expect("rd location should exist");
+        assert_eq!((rd.start.line, rd.start.column, rd.end.column), (1, 6, 8));
+
+        let rs1 = inc.get_r1_location().expect("rs1 location should exist");
+        assert_eq!((rs1.start.line, rs1.start.column, rs1.end.column), (1, 10, 12));
+
+        let imm = inc.get_imm_location().expect("imm location should exist");
+        assert_eq!((imm.start.line, imm.start.column, imm.end.column), (1, 14, 17));
+    }
+
+    #[test]
     fn test_zba_instruction_parser_acceptance() {
         let cases = [
             "add.uw x1, x2, x3",

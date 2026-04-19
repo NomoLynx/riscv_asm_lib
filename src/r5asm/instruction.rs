@@ -37,6 +37,52 @@ macro_rules! create_set_reg_value_fn {
 
 pub type ExternalSymbol = String;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SourcePosition {
+    pub line: usize,
+    pub column: usize,
+    pub offset: usize,
+}
+
+impl SourcePosition {
+    fn from_position(pos: &pest::Position<'_>) -> Self {
+        let (line, column) = pos.line_col();
+        Self {
+            line,
+            column,
+            offset: pos.pos(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SourceRange {
+    pub start: SourcePosition,
+    pub end: SourcePosition,
+}
+
+impl SourceRange {
+    pub fn from_pair(pair: &Pair<Rule>) -> Self {
+        let span = pair.as_span();
+        Self {
+            start: SourcePosition::from_position(&span.start_pos()),
+            end: SourcePosition::from_position(&span.end_pos()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct InstructionSourceRanges {
+    pub name: Option<SourceRange>,
+    pub r0: Option<SourceRange>,
+    pub r1: Option<SourceRange>,
+    pub r2: Option<SourceRange>,
+    pub r3: Option<SourceRange>,
+    pub imm: Option<SourceRange>,
+    pub option: Option<SourceRange>,
+    pub rel_fun: Option<SourceRange>,
+}
+
 #[derive(Clone, PartialEq)]
 pub struct Instruction {
     pub(super) name : String, 
@@ -51,6 +97,7 @@ pub struct Instruction {
     pub(super) rel_fun : Option<String>,
     pub(super) operations : EmitOperation,
     pub(super) label_virtual_address : u32,   // this field be store imm or offset, it consolidate the value for machine code based on inc type
+    pub(super) source_ranges: InstructionSourceRanges,
 
     pub (super) is_generate : bool,
     external_symbol : ExternalSymbol,
@@ -439,6 +486,66 @@ impl Instruction {
         self
     }
 
+    fn get_source_range_from_pair(pair: &Pair<Rule>) -> SourceRange {
+        SourceRange::from_pair(pair)
+    }
+
+    fn get_inc_name_range(pair: &Pair<Rule>) -> Option<SourceRange> {
+        if let Some(inc_name) = pair.to_owned().into_inner().find_first_tagged("inc_name") {
+            Some(Self::get_source_range_from_pair(&inc_name))
+        } else if pair.as_node_tag().is_some() && pair.as_node_tag().unwrap() == "inc_name" {
+            Some(Self::get_source_range_from_pair(pair))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_source_ranges(&self) -> &InstructionSourceRanges {
+        &self.source_ranges
+    }
+
+    pub fn get_name_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.name.as_ref()
+    }
+
+    pub fn get_r0_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.r0.as_ref()
+    }
+
+    pub fn get_r1_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.r1.as_ref()
+    }
+
+    pub fn get_r2_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.r2.as_ref()
+    }
+
+    pub fn get_r3_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.r3.as_ref()
+    }
+
+    pub fn get_register_location(&self, reg: InstructionRegisterName) -> Option<&SourceRange> {
+        match reg {
+            InstructionRegisterName::Rs0 |
+            InstructionRegisterName::Rd => self.get_r0_location(),
+            InstructionRegisterName::Rs1 => self.get_r1_location(),
+            InstructionRegisterName::Rs2 => self.get_r2_location(),
+            InstructionRegisterName::Rs3 => self.get_r3_location(),
+        }
+    }
+
+    pub fn get_imm_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.imm.as_ref()
+    }
+
+    pub fn get_option_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.option.as_ref()
+    }
+
+    pub fn get_rel_fun_location(&self) -> Option<&SourceRange> {
+        self.source_ranges.rel_fun.as_ref()
+    }
+
     pub (crate) fn from_pair(pair:&Pair<Rule>, config:&mut CodeGenConfiguration) -> Result<Vec<Self>, AsmError> {
         let inner = pair.to_owned().into_inner()
                     .nth(0)
@@ -447,6 +554,7 @@ impl Instruction {
         
         let extension_inc = inner.into_inner().nth(0).unwrap();
         let inc_name = Self::get_inc(&extension_inc)?;
+        let inc_name_location = Self::get_inc_name_range(&extension_inc);
         let extention_type = 
             if inner_rule == Rule::pseudoinstructions { BasicInstructionExtensions::PseudoInstructions } 
             else { Self::get_inc_extension_type(&extension_inc)? };
@@ -456,18 +564,18 @@ impl Instruction {
             OpCode::get_instruction_type_from_string(&inc_name)?
         };
 
-        match inner_rule {
+        let mut instructions = match inner_rule {
             Rule::basic_instructions => {
                 let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
                 match rules.as_slice() {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::vtypei, p2)] => {
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
-                        r.set_option_value(p2.as_str());
+                        r.set_option(p2);
                         Ok([r].to_vec())
                     }
                     [_, (Rule::registers, p), (Rule::integer, p1), (Rule::vtypei, p2)] => {
                         let mut r = Self::new_r0_imm(inc_name, inc_type, extention_type, p, p1);
-                        r.set_option_value(p2.as_str());
+                        r.set_option(p2);
                         Ok([r].to_vec())
                     }
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2), (Rule::option, option)] =>
@@ -477,12 +585,14 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::integer, p2), (Rule::registers, p1)] => {
                         let imm = Self::process_shamt_value(&inc_name, p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm_from_pair(p2);
                         r.set_imm(Some(imm.into()));
                         Ok([r].to_vec())
                     }
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::imm_macro, p2)] => {
                         let imm_macro = ImmMacro::from_pair(&p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm_from_pair(p2);
                         r.set_imm(Some(imm_macro.into()));
                         Ok([r].to_vec())
                     }
@@ -557,6 +667,7 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] => {
                         let imm = Self::process_shamt_value(&inc_name, p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm_from_pair(p2);
                         r.set_imm(Some(imm.into()));
                         Ok([r].to_vec())
                     }
@@ -576,6 +687,7 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] => {
                         let imm = Self::process_shamt_value(&inc_name, p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm_from_pair(p2);
                         r.set_imm(Some(imm.into()));
                         Ok([r].to_vec())
                     }
@@ -607,6 +719,7 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] => {
                         let imm = Self::process_shamt_value(&inc_name, p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm_from_pair(p2);
                         r.set_imm(Some(imm.into()));
                         Ok([r].to_vec())
                     }
@@ -622,6 +735,7 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] => {
                         let imm = Self::process_shamt_value(&inc_name, p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm_from_pair(p2);
                         r.set_imm(Some(imm.into()));
                         Ok([r].to_vec())
                     }
@@ -657,6 +771,7 @@ impl Instruction {
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::var_name, p2)] => {
                         let imm = Self::process_shamt_value(&inc_name, p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        r.set_imm_from_pair(p2);
                         r.set_imm(Some(imm.into()));
                         Ok([r].to_vec())
                     }
@@ -1285,7 +1400,15 @@ impl Instruction {
                 }
             }
             _ =>  Err(AsmError::MissingCase((file!(), line!()).into(), Rule::instruction)),
+        }?;
+
+        for instruction in instructions.iter_mut() {
+            if instruction.source_ranges.name.is_none() {
+                instruction.source_ranges.name = inc_name_location;
+            }
         }
+
+        Ok(instructions)
     }
 
     pub (crate) fn set_imm(&mut self, v: Option<Imm>) {
@@ -1446,6 +1569,7 @@ impl Instruction {
             option : None,
             operations : EmitOperation::None,
             label_virtual_address : 0,
+            source_ranges: InstructionSourceRanges::default(),
             is_generate : true,
             external_symbol : String::new(),
         }
@@ -1468,15 +1592,18 @@ impl Instruction {
     }
 
     pub (crate) fn set_rel_fun(&mut self, p:&Pair<Rule>) {
-        let mut inner = p.to_owned().into_inner();
+        let inner = p.to_owned().into_inner().collect::<Vec<_>>();
         if inner.len() > 1 {
-            let rel_fun = inner.nth(0).unwrap().as_str().to_string();
-            let imm = inner.nth(0).unwrap().as_str().to_string();
-            self.rel_fun = Some(rel_fun);
-            self.set_imm(Some(imm.into()));
+            let rel_fun_pair = &inner[0];
+            let imm_pair = &inner[1];
+            self.rel_fun = Some(rel_fun_pair.as_str().to_string());
+            self.source_ranges.rel_fun = Some(Self::get_source_range_from_pair(rel_fun_pair));
+            self.set_imm(Some(imm_pair.as_str().into()));
+            self.source_ranges.imm = Some(Self::get_source_range_from_pair(imm_pair));
         }
         else {
             self.rel_fun = Some(p.as_str().to_string());
+            self.source_ranges.rel_fun = Some(Self::get_source_range_from_pair(p));
         }
     }
 
@@ -1493,7 +1620,8 @@ impl Instruction {
     }
 
     pub (crate) fn set_option(&mut self, p:&Pair<Rule>) {
-        self.option = Some(p.as_str().to_string())
+        self.option = Some(p.as_str().to_string());
+        self.source_ranges.option = Some(Self::get_source_range_from_pair(p));
     }
 
     pub (crate) fn set_option_value(&mut self, value:&str) {
@@ -1501,23 +1629,28 @@ impl Instruction {
     }
 
     pub fn set_r0(&mut self, p:&Pair<Rule>) {
-        self.r0_name = Some(p.as_str().to_string())
+        self.r0_name = Some(p.as_str().to_string());
+        self.source_ranges.r0 = Some(Self::get_source_range_from_pair(p));
     }
 
     pub fn set_r1(&mut self, p:&Pair<Rule>) {
-        self.r1_name = Some(p.as_str().to_string())
+        self.r1_name = Some(p.as_str().to_string());
+        self.source_ranges.r1 = Some(Self::get_source_range_from_pair(p));
     }
 
     pub fn set_r2(&mut self, p:&Pair<Rule>) {
-        self.r2_name = Some(p.as_str().to_string())
+        self.r2_name = Some(p.as_str().to_string());
+        self.source_ranges.r2 = Some(Self::get_source_range_from_pair(p));
     }
 
     pub fn set_r3(&mut self, p:&Pair<Rule>) {
-        self.r3_name = Some(p.as_str().to_string())
+        self.r3_name = Some(p.as_str().to_string());
+        self.source_ranges.r3 = Some(Self::get_source_range_from_pair(p));
     }
 
     pub fn set_imm_from_pair(&mut self, p:&Pair<Rule>) {
-        self.set_imm_value(p.as_str())
+        self.set_imm_value(p.as_str());
+        self.source_ranges.imm = Some(Self::get_source_range_from_pair(p));
     }
 
     pub fn set_imm_value(&mut self, v:&str) {
