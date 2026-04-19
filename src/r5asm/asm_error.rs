@@ -17,6 +17,25 @@ pub enum AsmError {
     IOError,
 }
 
+impl AsmError {
+    pub fn get_error_location(&self) -> Option<&AsmErrorSourceFileLocation> {
+        match self {
+            AsmError::GeneralError(loc, _) |
+            AsmError::NoFound(loc, _) |
+            AsmError::ConversionFailed(loc, _) |
+            AsmError::MissingCase(loc, _) |
+            AsmError::ConverstionError(loc, _) |
+            AsmError::ParsingConversionError(loc, _) |
+            AsmError::IncompatibleType(loc) |
+            AsmError::NotSupportedOperation(loc, _) |
+            AsmError::ParameterError(loc) |
+            AsmError::WrongType(loc, _) |
+            AsmError::CannotRetrieveValue(loc) => Some(loc),
+            AsmError::IOError => None
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct AsmErrorSourceFileLocation(pub String, pub u32);
 
