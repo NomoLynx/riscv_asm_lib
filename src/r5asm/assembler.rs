@@ -4,6 +4,8 @@ use pest::Parser;
 
 use core_utils::debug::*;
 use parser_lib::markdown_lang::*;
+use pest::error::Error;
+use pest::error::LineColLocation;
 use super::asm_error::AsmError;
 use super::build_snippet_parameters::BuildSnippetParameters;
 use super::register::Register;
@@ -11,6 +13,13 @@ use super::elf_section::*;
 use super::asm_program::*;
 use parser_lib::common::ParsingError;
 use super::{asm_solution::ASMSolution, code_gen_config::CodeGenConfiguration, r5asm_pest::{R5AsmParser, Rule}};
+
+fn pest_error_to_line<R: pest::RuleType>(err: &Error<R>) -> usize {
+    match err.line_col {
+        LineColLocation::Pos((line, _column)) => line,
+        LineColLocation::Span((line, _column), _) => line,
+    }
+}
 
 /// parse asm input string with default configuration
 pub fn parse_asm_use_default_config(input:&str) -> Result<AsmProgram, AsmError> {
@@ -20,9 +29,10 @@ pub fn parse_asm_use_default_config(input:&str) -> Result<AsmProgram, AsmError> 
 
 pub fn parse_asm(input:&str, config:&mut CodeGenConfiguration) -> Result<AsmProgram, AsmError> {
     let mut pairs = R5AsmParser::parse(Rule::asm_prog, input).map_err(|e| {
-        let err_str = format!("Assembler Parsing error: {} @ {}", e, e.line());
+        let line = pest_error_to_line(&e) as u32;
+        let err_str = format!("Assembler Parsing error: {} @ {}", e, line);
         error_string(err_str.clone());
-        AsmError::GeneralError((file!(), line!()).into(), format!("error: {err_str} @ {:?}", &e.line_col))
+        AsmError::GeneralError((file!(), line).into(), format!("error: {err_str}"))
     })?;
 
     if let Some(pair) = pairs.find(|n| n.as_str().len() == input.len()) {
@@ -174,6 +184,19 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
 }
 
 /// build asm snippet from input string, it will parse the input and generate binary code
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pest_error_to_line_reports_source_line_not_offset() {
+        let err = R5AsmParser::parse(Rule::asm_prog, "\n\nfn efg {")
+            .expect_err("input should fail to parse on line 3");
+
+        assert_eq!(pest_error_to_line(&err), 3);
+    }
+}
+
 pub fn build_asm_snippet(input:&str, parameters:&BuildSnippetParameters) -> Result<Vec<u8>, AsmError> {
     debug_str("Build asm snippet...");
     debug_string(format!("Parameters: {:?}", parameters));

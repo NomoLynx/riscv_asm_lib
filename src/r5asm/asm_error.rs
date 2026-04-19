@@ -34,6 +34,23 @@ impl AsmError {
             AsmError::IOError => None
         }
     }
+
+    pub fn get_error_message(&self) -> String {
+        match self {
+            AsmError::GeneralError(_, msg) |
+            AsmError::NoFound(_, msg) |
+            AsmError::ConversionFailed(_, msg) |
+            AsmError::ConverstionError(_, msg) |
+            AsmError::ParsingConversionError(_, msg) |
+            AsmError::NotSupportedOperation(_, msg) |
+            AsmError::WrongType(_, msg) => msg.clone(),
+            AsmError::CannotRetrieveValue(_) => "Cannot retrieve value".to_string(),
+            AsmError::ParameterError(_) => "Parameter error".to_string(),
+            AsmError::IncompatibleType(_) => "Incompatible type".to_string(),
+            AsmError::MissingCase(_, rule) => format!("Missing case for rule: {:?}", rule),
+            AsmError::IOError => "IO Error".to_string()
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
