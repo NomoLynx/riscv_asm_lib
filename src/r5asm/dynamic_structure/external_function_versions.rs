@@ -83,7 +83,20 @@ impl<'a> IntoIterator for &'a ExternalFunctionVersions {
 
 impl Default for ExternalFunctionVersions {
     fn default() -> Self {
-        let string_value_table = md_table_to_string_row_table("r5asm_data/external_linux_functions.md").unwrap();
+        let manifest_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("r5asm")
+            .join("r5asm_data")
+            .join("external_linux_functions.md");
+
+        let manifest_path = manifest_path.to_string_lossy().to_string();
+        let string_value_table = md_table_to_string_row_table(&manifest_path)
+            .or_else(|_| md_table_to_string_row_table("r5asm_data/external_linux_functions.md"))
+            .unwrap_or_else(|err| {
+                eprintln!("warning: failed to load external function versions: {err:?}");
+                StringValueTable::new(Vec::new())
+            });
+
         string_value_table.into()
     }
 }
@@ -106,5 +119,25 @@ impl From<&StringValueTable> for ExternalFunctionVersions {
 impl From<StringValueTable> for ExternalFunctionVersions {
     fn from(table: StringValueTable) -> Self {
         ExternalFunctionVersions::from(&table)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_works_outside_r5asm_cwd() {
+        let original = std::env::current_dir().expect("current_dir should be available");
+        let temp = std::env::temp_dir();
+        std::env::set_current_dir(&temp).expect("should be able to switch cwd");
+
+        let result = std::panic::catch_unwind(ExternalFunctionVersions::default);
+
+        std::env::set_current_dir(original).expect("should restore cwd");
+
+        assert!(result.is_ok(), "default external function version lookup should not depend on cwd");
+        let versions = result.unwrap();
+        assert!(versions.find_version("printf").is_some() || versions.into_iter().next().is_some());
     }
 }

@@ -1,4 +1,5 @@
 use core_utils::number::get_i64_from_str;
+use pest::error;
 use pest::iterators::Pair;
 use pest_derive::Parser;
 use std::collections::HashMap;
@@ -17,7 +18,8 @@ pub fn from_pair_template<T>(pair:&Pair<Rule>, rule:Rule, config:&mut CodeGenCon
         f(rules, config)
     }
     else {
-        println!("expected rule = {:?} which cannot match {:#?} so cannot continue in from_pair_template", rule, pair);
+        let err = format!("expected rule = {:?} which cannot match {:#?} so cannot continue in from_pair_template", rule, pair);
+        error_string(err);
         Err(AsmError::ParsingConversionError((file!(), line!()).into(), format!("expected rule = {:?} which cannot match {:#?}", rule, pair)) )
     }
 }
@@ -29,7 +31,8 @@ pub fn from_pair_vec_template<T, T2>(pair:&Pair<Rule>, rule:Rule, config:&mut Co
         Ok(f2(rules))
     }
     else {
-        println!("{:?} cannot match {:#?}", rule, pair);
+        let err = format!("{:?} cannot match {:#?}", rule, pair);
+        error_string(err);
         Err(AsmError::ParsingConversionError((file!(), line!()).into(), format!("expected rule = {:?} which cannot match {:#?}", rule, pair)) )
 
     }
