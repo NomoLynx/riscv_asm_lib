@@ -7,7 +7,7 @@ pub mod opcode;
 pub mod instruction;
 mod machinecode;
 mod basic_instruction_extensions;
-mod register;
+pub mod register;
 pub mod directive;
 mod compact_inc;
 pub mod code_gen_config;

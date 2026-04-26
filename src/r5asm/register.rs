@@ -463,4 +463,35 @@ impl Register {
         let s = name.as_ref().to_uppercase();
         self.from_abi.contains_key(s.as_str())
     }
+
+    /// Returns `true` if `name` refers to a floating-point register
+    /// (F0–F31, FT0–FT11, FS0–FS11, FA0–FA7).
+    pub fn is_float_register_name<S>(name: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        let normalized = name.as_ref().trim().to_ascii_uppercase();
+        (Self::has_numeric_suffix(&normalized, 1) && normalized.starts_with('F'))
+            || matches!(
+                normalized.as_str(),
+                "FT0" | "FT1" | "FT2" | "FT3" | "FT4" | "FT5" | "FT6" | "FT7"
+                    | "FT8" | "FT9" | "FT10" | "FT11"
+                    | "FS0" | "FS1" | "FS2" | "FS3" | "FS4" | "FS5" | "FS6" | "FS7"
+                    | "FS8" | "FS9" | "FS10" | "FS11"
+                    | "FA0" | "FA1" | "FA2" | "FA3" | "FA4" | "FA5" | "FA6" | "FA7"
+            )
+    }
+
+    /// Returns `true` if `name` refers to a vector register (V0–V31).
+    pub fn is_vector_register_name<S>(name: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        let normalized = name.as_ref().trim().to_ascii_uppercase();
+        Self::has_numeric_suffix(&normalized, 1) && normalized.starts_with('V')
+    }
+
+    fn has_numeric_suffix(name: &str, prefix_len: usize) -> bool {
+        name.len() > prefix_len && name[prefix_len..].chars().all(|ch| ch.is_ascii_digit())
+    }
 }
