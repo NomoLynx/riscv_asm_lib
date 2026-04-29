@@ -705,13 +705,16 @@ impl AsmProgram {
         Ok(segment_headers)
     }
 
-    /// get entry address, with assumption that the text segment is always the 1st segmen and entry address is from the segment offset
-    /// if no entry address is defined, return 0
-    pub (crate) fn get_entry_address2(&self) -> usize {
+    /// get entry address, with assumption that the text segment is always the 1st segment and entry address is from the segment offset
+    /// return error when neither _start nor main is defined
+    pub (crate) fn get_entry_address2(&self) -> Result<usize, AsmError> {
         let labels = self.get_labels();
-        let entry_address = labels.get_entry_address()
-                            .unwrap_or(0);
-        entry_address
+        labels.get_entry_address().ok_or_else(|| {
+            AsmError::NoFound(
+                (file!(), line!()).into(),
+                "cannot find entry label: expected '_start' or 'main'".to_string(),
+            )
+        })
     }
 
     /// generate non-dynamic elf file
@@ -724,7 +727,7 @@ impl AsmProgram {
 
         // conslidate all data into byte vec
         let mut elf_file = ElfFile::new();
-        elf_file.set_entry_point(self.get_entry_address2() as u64);
+        elf_file.set_entry_point(self.get_entry_address2()? as u64);
         let text_segment = & segment_headers[SectionType::Text];
         let data_segment = & segment_headers[SectionType::Data];
         let bss_segment = & segment_headers[SectionType::Bss];
@@ -772,7 +775,7 @@ impl AsmProgram {
         let mut section_structure = ElfSectionStructure::default();
 
         elf_file.set_to_dynamic();
-        elf_file.set_entry_point(self.get_entry_address2() as u64);
+        elf_file.set_entry_point(self.get_entry_address2()? as u64);
         let text_segment = & segment_headers[SectionType::Text];
         let data_segment = & segment_headers[SectionType::Data];
         let bss_segment = & segment_headers[SectionType::Bss];
