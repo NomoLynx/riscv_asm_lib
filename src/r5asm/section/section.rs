@@ -9,12 +9,14 @@ use super::super::{asm_error::AsmError, code_gen_config::CodeGenConfiguration, l
 
 use super::super::calculate_padding;
 use super::super::elf_section::section_type::*;
+use super::super::instruction::SourceRange;
 
 /// Section in the assembly program, which contains a list of instructions or data directives, 
 /// and also contains the label and offset table for the section
 #[derive(Debug, Clone)]
 pub struct Section {
-    section_tag: SectionType, 
+    section_tag: SectionType,
+    section_tag_range: Option<SourceRange>,
     section_items : Vec<SectionItem2>,
     section_length : usize,
     sectino_offset : usize,
@@ -52,6 +54,7 @@ impl Section {
                         
                         Ok(Some(Self { 
                             section_tag : section_type,
+                            section_tag_range: Some(SourceRange::from_pair(p)),
                             section_items : items,
                             section_length : 0,
                             sectino_offset : 0,
@@ -109,6 +112,10 @@ impl Section {
 
     pub (crate) fn get_section_type(&self) -> SectionType {
         self.section_tag.clone()
+    }
+
+    pub fn get_section_tag_range(&self) -> Option<&SourceRange> {
+        self.section_tag_range.as_ref()
     }
 
     pub (crate) fn set_offset(&mut self, offset:usize) {
@@ -285,7 +292,8 @@ impl GenerateCode for Section {
 impl Default for Section {
     fn default() -> Self {
         Section { 
-            section_tag: SectionType::Text, 
+            section_tag: SectionType::Text,
+            section_tag_range: None,
             section_items: Vec::default(), 
             section_length: 0, 
             sectino_offset: 0,
