@@ -709,12 +709,20 @@ impl AsmProgram {
     /// return error when neither _start nor main is defined
     pub (crate) fn get_entry_address2(&self) -> Result<usize, AsmError> {
         let labels = self.get_labels();
-        labels.get_entry_address().ok_or_else(|| {
-            AsmError::NoFound(
+        if let Some(start) = labels.get("_start") {
+            let entry_address = start.get_offset();
+            output_string(format!("Entry label '_start' @ {entry_address} (0x{entry_address:X})"));
+            Ok(entry_address)
+        } else if let Some(main) = labels.get("main") {
+            let entry_address = main.get_offset();
+            output_string(format!("Entry label 'main' @ {entry_address} (0x{entry_address:X})"));
+            Ok(entry_address)
+        } else {
+            Err(AsmError::NoFound(
                 (file!(), line!()).into(),
                 "cannot find entry label: expected '_start' or 'main'".to_string(),
-            )
-        })
+            ))
+        }
     }
 
     /// generate non-dynamic elf file
