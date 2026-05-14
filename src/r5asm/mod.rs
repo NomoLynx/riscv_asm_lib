@@ -33,6 +33,9 @@ pub mod md_data;
 pub mod vector_incs;
 pub mod code_option;
 
+// meta modules which provides more info for other compilers
+pub mod meta;
+
 pub static mut OPTIMIZE_CODE_GEN : bool = false;
 pub static mut OPTIMIZE_TO_COMPACT_CODE : bool = false;
 

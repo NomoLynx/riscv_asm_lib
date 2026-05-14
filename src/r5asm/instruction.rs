@@ -2520,6 +2520,9 @@ impl Instruction {
         }
     }
 
+    /// get a list of register name which has been used in the instruction, 
+    /// the list will not contain duplicate register name
+    /// the result keep the register order (r0, r1, ...)
     pub (crate) fn get_involved_regs(&self) -> Vec<String> {
         let mut r = Vec::default();
         if let Some(n) = self.r0_name.as_ref() {
