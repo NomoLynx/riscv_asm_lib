@@ -258,7 +258,7 @@ pop int32 from memory by using a non-sp register. The register content will be i
 
 ## inc
 
-increase the register value by a const, this constant is between -2047 to 2048. 
+increase the register value by a const, this constant is between -2047 to 2048.
 
 ```asm
     addi $1, $1, $2
