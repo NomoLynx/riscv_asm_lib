@@ -902,7 +902,6 @@ impl AsmProgram {
 
         dynamic_structure.enrich_symbols(&segment_headers);
         let elf_file = self.generate_dynamic_elf(&mut dynamic_structure, code_bin, &segment_headers, config)?;
-        debug_string(format!("Dynamic Structure: {dynamic_structure:?}\r\n"));
 
         Ok(elf_file.to_bytes())
     }
