@@ -1689,7 +1689,7 @@ impl Instruction {
         self.name.clone().to_uppercase()
     }
 
-    pub (crate) fn get_op_code(&self) -> Result<OpCode, AsmError> {
+    pub fn get_op_code(&self) -> Result<OpCode, AsmError> {
         if let Some(op) = OpCode::from_str(&self.name) {
             Ok(op)
         }
