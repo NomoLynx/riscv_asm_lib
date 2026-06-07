@@ -491,6 +491,36 @@ impl Register {
         Self::has_numeric_suffix(&normalized, 1) && normalized.starts_with('V')
     }
 
+    /// Retrun 'true' if 'name' refers to csr register
+    pub fn is_csr_register_name<S>(name: S) -> bool
+    where   S: AsRef<str>,
+    {
+        let normalized = name.as_ref().trim().to_ascii_uppercase();
+        matches!(
+            normalized.as_str(),
+            "SSTATUS" | "SEDELEG" | "SIDELEG" | "SIE" | "STVEC" | "SCOUNTEREN"
+                | "SSCRATCH" | "SEPC" | "SCAUSE" | "STVAL" | "SIP"
+                | "SATP"
+                | "MSSTATUS" | "MISA" | "MEDELEG" | "MIDELEG" | "MIE" | "MTVEC" | "MCOUNTEREN" | "MSSTATUSH"
+                | "MCOUNTINHIBIT"
+                | "TSELECT" | "TDATA1" | "TDATA2" | "TDATA3"
+                | "DCSR" | "DPC" | "DSCRATCH0" | "DSCRATCH1"
+                | "MCYCLE" | "MINSTRET" 
+                | "MCYCLEH" | "MINSTRETH"
+                | "CYCLE"  |  "TIME"  |  "INSTRET"
+                | "CYCLEH"  |  "TIMEH"  |  "INSTRETH"
+                | "MVENDORID"  |  "MARCHID"  |  "MIMPID"  |  "MHARTID"
+                | "FFLAGS" | "FRM" | "FCSR" 
+                | "pmpcfg0" | "pmpcfg1" | "pmpcfg2" | "pmpcfg3" | "pmpcfg4" | "pmpcfg5" | "pmpcfg6" | "pmpcfg7"
+                | "pmpcfg8" | "pmpcfg9" | "pmpcfg10" | "pmpcfg11" | "pmpcfg12" | "pmpcfg13" | "pmpcfg14" | "pmpcfg15"
+                | "pmpaddr0" | "pmpaddr1" | "pmpaddr2" | "pmpaddr3" | "pmpaddr4" | "pmpaddr5" | "pmpaddr6" | "pmpaddr7"
+                | "pmpaddr8" | "pmpaddr9" | "pmpaddr10" | "pmpaddr11" | "pmpaddr12" | "pmpaddr13" | "pmpaddr14" | "pmpaddr15" | "pmpaddr16"
+                | "pmpaddr17" | "pmpaddr18" | "pmpaddr19" | "pmpaddr20" | "pmpaddr21" | "pmpaddr22" | "pmpaddr23" | "pmpaddr24" | "pmpaddr25" | "pmpaddr26" | "pmpaddr27" | "pmpaddr28" | "pmpaddr29" | "pmpaddr30" | "pmpaddr31" | "pmpaddr32" 
+                | "pmpaddr33" | "pmpaddr34" | "pmpaddr35" | "pmpaddr36" | "pmpaddr37" | "pmpaddr38" | "pmpaddr39" | "pmpaddr40" | "pmpaddr41" | "pmpaddr42" | "pmpaddr43" | "pmpaddr44" | "pmpaddr45" | "pmpaddr46" | "pmpaddr47" | "pmpaddr48" 
+                | "pmpaddr49" | "pmpaddr50" | "pmpaddr51" | "pmpaddr52" | "pmpaddr53" | "pmpaddr54" | "pmpaddr55" | "pmpaddr56" | "pmpaddr57" | "pmpaddr58" | "pmpaddr59" | "pmpaddr60" | "pmpaddr61" | "pmpaddr62" | "pmpaddr63"
+        )
+    }
+
     fn has_numeric_suffix(name: &str, prefix_len: usize) -> bool {
         name.len() > prefix_len && name[prefix_len..].chars().all(|ch| ch.is_ascii_digit())
     }
