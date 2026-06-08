@@ -1415,7 +1415,7 @@ impl Instruction {
         self.imm = v;
     }
 
-    pub (crate) fn get_imm(&self) -> Option<&Imm> {
+    pub fn get_imm(&self) -> Option<&Imm> {
         self.imm.as_ref()
     }
 
