@@ -21,10 +21,21 @@ fn pest_error_to_line<R: pest::RuleType>(err: &Error<R>) -> usize {
     }
 }
 
-/// parse asm input string with default configuration
+/// parse asm input string with default configuration, mainly for 
+/// source code simulator, use 100 as base PC value for .text section
 pub fn parse_asm_use_default_config(input:&str) -> Result<AsmProgram, AsmError> {
     let mut config = CodeGenConfiguration::default();
-    parse_asm(input, &mut config)
+    let mut program = parse_asm(input, &mut config)?;
+
+    // Same passes used by assembler build flow
+    program.second_round(&mut config)?;
+    program.third_round()?;
+
+    // Optional: apply a base PC to .text so returned offsets are relocated
+    program.update_section(SectionType::Text, 100 as usize);
+    program.update_label_virtual_address(None)?;
+
+    Ok(program)
 }
 
 pub fn parse_asm(input:&str, config:&mut CodeGenConfiguration) -> Result<AsmProgram, AsmError> {
