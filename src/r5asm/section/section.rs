@@ -275,6 +275,14 @@ impl Section {
             .filter(|x| x.is_directive())
             .collect::<Vec<_>>()
     }
+
+    /// get maximum offset in current section
+    pub fn get_maximum_offset(&self) -> Option<usize> {
+        self.get_all_items()
+            .iter()
+            .map(|x| x.get_offset())
+            .max()
+    }
 }
 
 impl GenerateCode for Section {

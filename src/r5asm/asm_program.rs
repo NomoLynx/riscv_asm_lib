@@ -707,7 +707,7 @@ impl AsmProgram {
 
     /// get entry address, with assumption that the text segment is always the 1st segment and entry address is from the segment offset
     /// return error when neither _start nor main is defined
-    pub (crate) fn get_entry_address2(&self) -> Result<usize, AsmError> {
+    pub fn get_entry_address2(&self) -> Result<usize, AsmError> {
         let labels = self.get_labels();
         if let Some(start) = labels.get("_start") {
             let entry_address = start.get_offset();
@@ -1238,5 +1238,13 @@ impl AsmProgram {
 
     pub fn get_sections(&self) -> &Vec<Section> {
         &self.sections
+    }
+
+    /// get the maximum offset of all instructions in text sections
+    pub fn get_maximum_instruction_offset(&self) -> Option<usize> {
+        self.sections.iter()
+            .filter(|x| x.get_section_type() == SectionType::Text)
+            .max_by_key(|x| x.get_maximum_offset())
+            .and_then(|x| x.get_maximum_offset())
     }
 }
