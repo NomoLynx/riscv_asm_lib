@@ -2061,6 +2061,10 @@ impl Instruction {
         self.label_virtual_address = v;
     }
 
+    pub fn get_virtual_address(&self) -> u32 {
+        self.label_virtual_address
+    }
+
     pub fn convert_to_compact(&self) -> Option<Instruction> {
         let regs = Register::new();
         let op_code = self.get_op_code().ok()?;
