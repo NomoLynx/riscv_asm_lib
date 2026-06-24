@@ -1685,7 +1685,7 @@ impl Instruction {
     }
 
     /// get inc's name and convert to upper case, like ADD, SUB
-    pub (crate) fn get_name(&self) -> String {
+    pub fn get_name(&self) -> String {
         self.name.clone().to_uppercase()
     }
 
