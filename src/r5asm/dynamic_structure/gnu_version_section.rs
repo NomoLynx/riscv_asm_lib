@@ -1,16 +1,13 @@
+use rust_macro_internal::md2struct;
+
 use super::super::{alignment::Alignment, traits::SectionNameTrait};
 use std::{fmt::Debug, vec};
 
 pub type GnuVersionEntry = u16;
 
+#[md2struct("src/r5asm/dynamic_structure/elf_section.md", "ELF GNU Version Section")]
 #[derive(Clone)]
 pub struct GnuVersionSection {
-    virtual_address : u64,
-    offset : u64, 
-
-    /// Version information entries
-    entries: Vec<GnuVersionEntry>,
-    alignment: Alignment,
 }
 
 impl GnuVersionSection {

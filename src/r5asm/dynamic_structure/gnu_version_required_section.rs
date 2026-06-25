@@ -1,18 +1,14 @@
 use rust_macro::*;
+use rust_macro_internal::md2struct;
 
 use super::super::alignment::Alignment;
 use std::fmt::Debug;
 use super::super::traits::SectionNameTrait;
 
+#[md2struct("src/r5asm/dynamic_structure/elf_section.md", "ELF GNU Version Required Section")]
 #[derive(Clone)]
 pub struct GnuVersionRequiredHeader {
-    version: u16,   // always 1
-    cnt: u16,          // number of version entries
-    file_offset: u32,  // offset to the file name string in the string table
-    aux_offset: u32,    // offset to the first auxiliary entry, usually size of this header
-    vn_next: u32,    // offset to the next version header, or 0 if last
 
-    required_entries : Vec<GnuVersionRequiredAux>, // auxiliary entries, it contains the version entries for this dependency, the number of entries is determined by `cnt`
 }
 
 impl GnuVersionRequiredHeader {

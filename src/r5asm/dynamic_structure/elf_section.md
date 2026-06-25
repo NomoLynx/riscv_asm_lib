@@ -62,3 +62,32 @@ In typical PLT lazy binding, the first time a function is called the PLT stub ju
 | buckets | Vec<u32> | varies | store the bloomer filter |
 | chains | Vec<u32> | varies | store the bloomer filter |
 | alignment | Alignment | varies | Alignment requirement for the section |
+
+### ELF Dynamic Symbol Table
+
+| Field | Type | Size | Description |
+| ------- | ------ | ------ | ------------- |
+| virtual_address | u64 | 8 bytes | virtual address of the string table in memory |
+| offset | u64 | 8 bytes | virtual address of the string table in memory |
+| entries | Vec<DynamicSymbolEntry> | varies | store the dynamic symbol entry |
+| alignment | Alignment | varies | Alignment requirement for the section |
+
+## ELF GNU Version Section
+
+| Field | Type | Size | Description |
+| ------- | ------ | ------ | ------------- |
+| virtual_address | u64 | 8 bytes | virtual address of the string table in memory |
+| offset | u64 | 8 bytes | virtual address of the string table in memory |
+| entries | Vec<GnuVersionEntry> | varies |  |
+| alignment | Alignment | varies | Alignment requirement for the section |
+
+### ELF GNU Version Required Section
+
+| Field | Type | Size | Description |
+| ------- | ------ | ------ | ------------- |
+| version | u16 | 2 bytes | always 1 |
+| cnt | u16 | 2 bytes | number of version entries |
+| file_offset | u32 | 4 bytes | offset to the file name string in the string table |
+| aux_offset | u32 | 4 bytes | offset to the first auxiliary entry, usually size of this header |
+| vn_next | u32 | 4 bytes | offset to the next version header, or 0 if last |
+| required_entries | Vec<GnuVersionRequiredAux> | varies | auxiliary entries, it contains the version entries for this dependency, the number of entries is determined by cnt |

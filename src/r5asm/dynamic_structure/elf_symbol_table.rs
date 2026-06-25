@@ -2,6 +2,8 @@ use core::panic;
 use std::fmt::{self, Debug, Formatter};
 use std::ops::{Index, IndexMut};
 
+use rust_macro_internal::md2struct;
+
 use crate::r5asm::dynamic_structure::dynamic_symbol_entry::DynamicSymbolEntry;
 
 use super::super::traits::section_name_trait::SectionNameTrait;
@@ -10,12 +12,9 @@ use super::super::traits::to_markdown_table_row_trait::ToMarkdownTableRow;
 use super::ELFStringTable;
 use super::super::alignment::*;
 
+#[md2struct("src/r5asm/dynamic_structure/elf_section.md", "ELF Dynamic Symbol Table")]
 #[derive(Clone)]
 pub struct ELFDynamicSymbolTable {
-    virtual_address: u64,
-    offset : u64,
-    entries : Vec<DynamicSymbolEntry>,
-    alignment: Alignment,
 }
 
 impl ELFDynamicSymbolTable {
