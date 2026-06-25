@@ -47,3 +47,18 @@ In typical PLT lazy binding, the first time a function is called the PLT stub ju
 | offset | u64 | 8 bytes | virtual address of the string table in memory |
 | data | Vec<String> | varies | store the string values in this string table |
 | alignment | Alignment | varies | Alignment requirement for the section |
+
+### ELF GNU Hash Section
+
+| Field | Type | Size | Description |
+| ------- | ------ | ------ | ------------- |
+| virtual_address | u64 | 8 bytes | virtual address of the string table in memory |
+| offset | u64 | 8 bytes | virtual address of the string table in memory |
+| nbuckets | u32 | 4 bytes | n buckets |
+| symoffset | u32 | 4 bytes | sym offset |
+| bloom_size | u32 | 4 bytes | bloom size |
+| bloom_shift | u32 | 4 bytes | bloom shift |
+| bloom_filter | Vec<u64> | varies | store the bloomer filter |
+| buckets | Vec<u32> | varies | store the bloomer filter |
+| chains | Vec<u32> | varies | store the bloomer filter |
+| alignment | Alignment | varies | Alignment requirement for the section |

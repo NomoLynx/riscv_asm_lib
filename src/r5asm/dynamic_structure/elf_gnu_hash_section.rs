@@ -1,3 +1,5 @@
+use rust_macro_internal::md2struct;
+
 use super::super::{alignment::Alignment, traits::{section_name_trait::SectionNameTrait, section_size_trait::SectionSizeTrait}};
 use super::{ELFDynamicSymbolTable, ELFStringTable};
 use super::super::traits::*;
@@ -7,20 +9,10 @@ use std::fmt::Debug;
 pub const DT_GNU_HASH: u64 = 0x6ffffef5;
 
 /// Representation of a GNU hash section + DT_GNU_HASH entry
+#[md2struct("src/r5asm/dynamic_structure/elf_section.md", "ELF GNU Hash Section")]
 #[derive(Clone)]
 pub struct GnuHashSection {
-    virtual_address: u64,
-    offset : u64,
     
-    nbuckets: u32,
-    symoffset: u32,
-    bloom_size: u32,
-    bloom_shift: u32,
-    bloom_filter: Vec<u64>,
-    buckets: Vec<u32>,
-    chains: Vec<u32>,
-
-    alignment: Alignment,
 }
 
 impl GnuHashSection {
