@@ -1,15 +1,14 @@
+use rust_macro_internal::md2struct;
+
 use super::super::{alignment::*, traits::{section_name_trait::SectionNameTrait, section_size_trait::SectionSizeTrait}};
 
 use super::elf_dynamic_structure::DynamicEntry;
 use std::fmt::{self, Debug, Formatter};
 use std::ops::{Index, IndexMut};
 
+#[md2struct("src/r5asm/dynamic_structure/elf_section.md", "ELF String Table")]
 #[derive(Clone)]
 pub struct ELFStringTable {
-    virtual_address : u64,
-    offset : u64,
-    data : Vec<String>,
-    alignment: Alignment,
 }
 
 impl ELFStringTable {

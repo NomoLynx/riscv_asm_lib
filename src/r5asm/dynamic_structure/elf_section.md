@@ -38,3 +38,12 @@ In typical PLT lazy binding, the first time a function is called the PLT stub ju
 | offset | u64 | 8 bytes | File offset of the PLT section |
 | got_entries | Vec<u64> | varies | GOT entries used for binary generation |
 | alignment | Alignment | varies | Alignment requirement for the section |
+
+### ELF String Table
+
+| Field | Type | Size | Description |
+| ------- | ------ | ------ | ------------- |
+| virtual_address | u64 | 8 bytes | virtual address of the string table in memory |
+| offset | u64 | 8 bytes | virtual address of the string table in memory |
+| data | Vec<String> | varies | store the string values in this string table |
+| alignment | Alignment | varies | Alignment requirement for the section |
