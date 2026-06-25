@@ -11,7 +11,7 @@ Each entry has three responsibilities:
 In typical PLT lazy binding, the first time a function is called the PLT stub jumps through the GOT.PLT slot (which initially points back into the PLT), triggering the dynamic linker to walk the `.rela.plt` entries, find the matching symbol, resolve it, and write the real address into the GOT.PLT slot — so subsequent calls go directly to the function.
 
 | Field | Type | Size | Description |
-|-------|------|------|-------------|
+| ------- | ------ | ------ | ------------- |
 | r_offset | u64 | 8 bytes | Offset in the GOT.PLT section where the relocation applies |
 | r_info | RelaRInfo | varies | Relocation type and symbol index |
 | r_addend | i64 | 8 bytes | Signed addend; can be negative (e.g. PC-relative compensation) |
@@ -19,7 +19,7 @@ In typical PLT lazy binding, the first time a function is called the PLT stub ju
 ### ELF PLT Relocation Table
 
 | Field | Type | Size | Description |
-|-------|------|------|-------------|
+| ------- | ------ | ------ | ------------- |
 | virtual_address | u64 | 8 bytes | Virtual address of the PLT relocation table in memory |
 | offset | u64 | 8 bytes | File offset of the PLT relocation table |
 | entries | Vec<[PLTRelocationEntry](#plt-relocation-entry)> | varies | List of PLT relocation entries |
@@ -30,7 +30,7 @@ In typical PLT lazy binding, the first time a function is called the PLT stub ju
 ### ELF PLT Section
 
 | Field | Type | Size | Description |
-|-------|------|------|-------------|
+| ------- | ------ | ------ | ------------- |
 | code | Vec<u8> | varies | PLT executable code bytes |
 | got_plt_base | u64 | 8 bytes | Base address of the .got.plt section |
 | plt_base_addr | u64 | 8 bytes | Virtual address where .plt starts in memory |
