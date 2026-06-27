@@ -53,12 +53,12 @@ impl ElfFile {
     }
 
     pub fn add_code_section(&mut self, code: CodeSection, vaddr: u64) {
-        let size = code.code.len() as u64;
+        let size = code.get_size() as u64;
         let alignment = self.alignment as u64;
         let offset = self.next_segment_offset();
         let phdr = ProgramHeader::new_code_program_header(offset, vaddr, size, size, alignment);
         self.program_headers.push(phdr);
-        self.segments.push(code.code);
+        self.segments.push(code.into());
         self.update_header();
     }
 

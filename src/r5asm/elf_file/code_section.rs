@@ -6,7 +6,7 @@ use super::{bytes_to_hex, hex_to_bytes};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CodeSection {
-    pub code: Vec<u8>,
+    code: Vec<u8>,
 }
 
 impl CodeSection {
@@ -31,8 +31,20 @@ impl CodeSection {
         &self.code
     }
 
+    /// Get the size of the code section
     pub fn get_size(&self) -> usize {
         self.code.len()
+    }
+
+    /// Convert the code section into a vector of bytes, consuming the CodeSection
+    pub fn into_data(self) -> Vec<u8> {
+        self.code
+    }
+}
+
+impl From<CodeSection> for Vec<u8> {
+    fn from(code_section: CodeSection) -> Self {
+        code_section.into_data()
     }
 }
 
