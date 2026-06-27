@@ -180,6 +180,8 @@ impl ElfFile {
         None
     }
 
+    /// serialize the ELFFile struct into a binary representation, 
+    /// including the ELF header, program headers, and segment data
     pub fn to_bytes(&self) -> Vec<u8> {
         // check if program headers and segments are consistent
         if self.program_headers.len() != self.segments.len() {
