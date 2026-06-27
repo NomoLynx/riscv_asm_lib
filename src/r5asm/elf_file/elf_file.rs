@@ -159,6 +159,8 @@ impl ElfFile {
         self.add_segment_entry(phdr, vec![], SegmentPlacement::Auto); // this is necessary because to_bytes() requires program header entry MUST have a segment
     }
 
+    /// Calculate the next segment offset based on the current program headers and their sizes, 
+    /// taking into account alignment and special segments like INTERP, DYNAMIC, and PHDR.
     fn next_segment_offset_with_headers(&self, headers: &[ProgramHeader]) -> u64 {
         let previous_segment_size = headers.iter()
             .map(|x| if x.is_interp_segment() || x.is_dynamic_segment() || x.is_phdr_segment() { 0 }
@@ -180,6 +182,8 @@ impl ElfFile {
         }
     }
 
+    /// layout program headers and return the layouted program headers, 
+    /// this function will also update the file offset of each program header
     fn layout_program_headers(&self) -> Vec<ProgramHeader> {
         let mut layout = Vec::with_capacity(self.segment_entries.len());
         for entry in &self.segment_entries {
