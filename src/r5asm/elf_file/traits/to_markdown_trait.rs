@@ -116,13 +116,13 @@ impl ToMarkdown for ElfFile {
         r.push_str("\n");
 
         // serialize program header
-        r.push_str(& self.program_headers.to_markdown());
+        r.push_str(& self.program_headers().to_markdown());
         r.push_str("\n");
 
         r.push_str("## Segments\n\n");
         // serialize sections
-        for section in &self.segments {
-            r.push_str(& section.to_markdown());
+        for entry in &self.segment_entries {
+            r.push_str(& entry.data.to_markdown());
             r.push_str("\n");
         }
 
