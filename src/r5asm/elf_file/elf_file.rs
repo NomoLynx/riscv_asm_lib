@@ -12,15 +12,30 @@ use super::traits::*;
 
 pub type ElfHeader = Elf64Header;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SegmentPlacement {
+    Auto,
+    Fixed(u64),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SegmentEntry {
     pub header: ProgramHeader,
     pub data: Vec<u8>,
+    pub placement: SegmentPlacement,
 }
 
 impl SegmentEntry {
-    pub fn new(header: ProgramHeader, data: Vec<u8>) -> Self {
-        Self { header, data }
+    pub fn new(header: ProgramHeader, data: Vec<u8>, placement: SegmentPlacement) -> Self {
+        Self {
+            header,
+            data,
+            placement,
+        }
+    }
+
+    pub fn new_fixed(header: ProgramHeader, data: Vec<u8>) -> Self {
+        Self::new(header, data, SegmentPlacement::Fixed(header.get_file_offset()))
     }
 }
 
@@ -46,7 +61,7 @@ impl ElfFile {
         let segment_entries = program_headers
             .into_iter()
             .zip(data)
-            .map(|(header, data)| SegmentEntry::new(header, data))
+            .map(|(header, data)| SegmentEntry::new_fixed(header, data))
             .collect::<Vec<_>>();
 
         Self {
@@ -58,8 +73,8 @@ impl ElfFile {
         }
     }
 
-    fn add_segment_entry(&mut self, header: ProgramHeader, data: Vec<u8>) {
-        self.segment_entries.push(SegmentEntry::new(header, data));
+    fn add_segment_entry(&mut self, header: ProgramHeader, data: Vec<u8>, placement: SegmentPlacement) {
+        self.segment_entries.push(SegmentEntry::new(header, data, placement));
         self.update_header();
     }
 
@@ -83,50 +98,47 @@ impl ElfFile {
     pub fn add_code_section(&mut self, code: CodeSection, vaddr: u64) {
         let size = code.get_size() as u64;
         let alignment = self.alignment as u64;
-        let offset = self.next_segment_offset();
-        let phdr = ProgramHeader::new_code_program_header(offset, vaddr, size, size, alignment);
-        self.add_segment_entry(phdr, code.into());
+        let phdr = ProgramHeader::new_code_program_header(0, vaddr, size, size, alignment);
+        self.add_segment_entry(phdr, code.into(), SegmentPlacement::Auto);
     }
 
     pub fn add_data_section(&mut self, data: DataSection, vaddr: u64) {
         let size = data.get_size() as u64;
         let alignment = self.alignment as u64;
-        let offset = self.next_segment_offset();
-        let phdr = ProgramHeader::new_data_program_header(offset, vaddr, size, size, alignment);
-        self.add_segment_entry(phdr, data.into());
+        let phdr = ProgramHeader::new_data_program_header(0, vaddr, size, size, alignment);
+        self.add_segment_entry(phdr, data.into(), SegmentPlacement::Auto);
     }
 
     /// add dynamic section to the ELF file
     pub fn add_dynamic_section(&mut self, segment_header: &ProgramHeader) {
         let phdr: ProgramHeader = segment_header.clone(); 
-        self.add_segment_entry(phdr, vec![]); // this is necessary because to_bytes() requires program header entry MUST have a segment
+        self.add_segment_entry(phdr, vec![], SegmentPlacement::Fixed(segment_header.get_file_offset())); // this is necessary because to_bytes() requires program header entry MUST have a segment
     }
 
     /// add interpreter section to the ELF file
     pub fn add_interpreter_section(&mut self, segment_header:&ProgramHeader) {
         let phdr = segment_header.clone();
-        self.add_segment_entry(phdr, vec![]); // this is necessary because to_bytes() requires program header entry MUST have a segment
+        self.add_segment_entry(phdr, vec![], SegmentPlacement::Fixed(segment_header.get_file_offset())); // this is necessary because to_bytes() requires program header entry MUST have a segment
     }
 
     /// add phdr section to the ELF file
     pub fn add_phdr_section(&mut self, segment_header:&ProgramHeader) {
         let phdr = segment_header.clone();
-        self.add_segment_entry(phdr, vec![]); // this is necessary because to_bytes() requires program header entry MUST have a segment
+        self.add_segment_entry(phdr, vec![], SegmentPlacement::Fixed(segment_header.get_file_offset())); // this is necessary because to_bytes() requires program header entry MUST have a segment
     }
 
     /// add loadable segment to host phdr and elf header
     pub fn add_segment_for_phdr(&mut self, segment_header:&ProgramHeader) {
         let phdr = segment_header.clone();
-        self.add_segment_entry(phdr, vec![]); // this is necessary because to_bytes() requires program header entry MUST have a segment
+        self.add_segment_entry(phdr, vec![], SegmentPlacement::Fixed(segment_header.get_file_offset())); // this is necessary because to_bytes() requires program header entry MUST have a segment
     }
 
     // Add read-only section to the ELF file
     pub fn add_read_only_section(&mut self, data: ReadOnlySection, vaddr: u64) {
         let size = data.get_size() as u64;
         let alignment = self.alignment as u64;
-        let offset = self.next_segment_offset();
-        let phdr = ProgramHeader::new_readonly_data_program_header(offset, vaddr, size, size, alignment);
-        self.add_segment_entry(phdr, data.into());
+        let phdr = ProgramHeader::new_readonly_data_program_header(0, vaddr, size, size, alignment);
+        self.add_segment_entry(phdr, data.into(), SegmentPlacement::Auto);
     }
 
     /// Add a note section to the ELF file
@@ -137,43 +149,94 @@ impl ElfFile {
 
         let phdr = ProgramHeader::new_note_program_header(vaddr, size, alignment);
 
-        self.add_segment_entry(phdr, bytes);
+        self.add_segment_entry(phdr, bytes, SegmentPlacement::Fixed(vaddr));
     }
 
     /// add bss section to the ELF file
     pub fn add_bss_section(&mut self, vaddr: u64, size: u64) {
         let alignment = self.alignment as u64;
-        let offset = self.next_segment_offset();
-        let phdr = ProgramHeader::new_bss_program_header(offset, vaddr, size, alignment);        
-        self.add_segment_entry(phdr, vec![]); // this is necessary because to_bytes() requires program header entry MUST have a segment
+        let phdr = ProgramHeader::new_bss_program_header(0, vaddr, size, alignment);        
+        self.add_segment_entry(phdr, vec![], SegmentPlacement::Auto); // this is necessary because to_bytes() requires program header entry MUST have a segment
     }
 
-    fn next_segment_offset(&self) -> u64 {
-        let previous_segment_size = self.segment_entries.iter()
-            .map(|entry| {
-                let x = entry.header;
-                if x.is_interp_segment() || x.is_dynamic_segment() || x.is_phdr_segment() {
-                    0
-                }
-                else {
-                    self.round_up(x.get_file_size())
-                }
-            })
+    fn next_segment_offset_with_headers(&self, headers: &[ProgramHeader]) -> u64 {
+        let previous_segment_size = headers.iter()
+            .map(|x| if x.is_interp_segment() || x.is_dynamic_segment() || x.is_phdr_segment() { 0 }
+                                     else { self.round_up(x.get_file_size()) } )
             .sum::<u64>();
 
         // if there is a segement with zero offset, it means the elf header and phdr are already included
         // so we do not need to add their size again
-        let contain_zero_offset = self.segment_entries.iter().any(|entry| entry.header.get_file_offset() == 0);
+        let contain_zero_offset = headers.iter().any(|x| x.get_file_offset() == 0);
         if contain_zero_offset {
             self.round_up(previous_segment_size)
         }
         else {
             let r = previous_segment_size + 
                     self.header.get_e_phoff() + 
-                    ((self.segment_entries.len() + 1) as u64 * ProgramHeader::SERIALIZED_SIZE as u64);
+                    ((headers.len() + 1) as u64 * ProgramHeader::SERIALIZED_SIZE as u64);
             
             self.round_up(r)
         }
+    }
+
+    fn layout_program_headers(&self) -> Vec<ProgramHeader> {
+        let mut layout = Vec::with_capacity(self.segment_entries.len());
+        for entry in &self.segment_entries {
+            let mut phdr = entry.header;
+            let offset = match entry.placement {
+                SegmentPlacement::Fixed(v) => v,
+                SegmentPlacement::Auto => self.next_segment_offset_with_headers(&layout),
+            };
+            phdr.set_file_offset(offset);
+            layout.push(phdr);
+        }
+        layout
+    }
+
+    /// Validate file-layout ranges for segments that emit bytes.
+    fn validate_layout(&self, headers: &[ProgramHeader]) -> Result<(), String> {
+        if headers.len() != self.segment_entries.len() {
+            return Err(format!(
+                "layout/header mismatch: headers={}, entries={}",
+                headers.len(),
+                self.segment_entries.len()
+            ));
+        }
+
+        let mut ranges = Vec::new();
+        for (index, (header, entry)) in headers.iter().zip(&self.segment_entries).enumerate() {
+            if entry.data.is_empty() {
+                continue;
+            }
+
+            let start = header.get_file_offset();
+            let size = entry.data.len() as u64;
+            let end = start
+                .checked_add(size)
+                .ok_or_else(|| format!("segment {} range overflow: start=0x{:X}, size=0x{:X}", index, start, size))?;
+
+            ranges.push((index, start, end));
+        }
+
+        ranges.sort_by_key(|(_, start, _)| *start);
+        for pair in ranges.windows(2) {
+            let (left_idx, left_start, left_end) = pair[0];
+            let (right_idx, right_start, right_end) = pair[1];
+            if right_start < left_end {
+                return Err(format!(
+                    "segment overlap: #{} [0x{:X}, 0x{:X}) overlaps #{} [0x{:X}, 0x{:X})",
+                    left_idx,
+                    left_start,
+                    left_end,
+                    right_idx,
+                    right_start,
+                    right_end
+                ));
+            }
+        }
+
+        Ok(())
     }
 
     /// round up to alignment for a given value
@@ -200,23 +263,28 @@ impl ElfFile {
     /// serialize the ELFFile struct into a binary representation, 
     /// including the ELF header, program headers, and segment data
     pub fn to_bytes(&self) -> Vec<u8> {
+        let program_headers = self.layout_program_headers();
+        if let Err(err) = self.validate_layout(&program_headers) {
+            panic!("Invalid ELF segment layout: {}", err);
+        }
+
         let mut bytes = Vec::new();
         
         // Serialize ELF header
         bytes.extend(self.header.to_bytes());
 
         // Serialize program headers
-        for entry in &self.segment_entries {
-            let header_bytes = entry.header.to_bytes();
+        for phdr in &program_headers {
+            let header_bytes = phdr.to_bytes();
             bytes.extend(header_bytes);
         }
 
         // serialize note segment first if exists
         // because it is usually the first segment in ELF file
-        let note_index = self.get_note_segment_index();
+        let note_index = program_headers.iter().position(|phdr| phdr.is_note_segment());
         if let Some(index) = note_index {
             let entry = &self.segment_entries[index];
-            let offset = entry.header.get_file_offset() as usize;
+            let offset = program_headers[index].get_file_offset() as usize;
             
             // Pad with zeros if needed
             if bytes.len() < offset {
@@ -232,17 +300,17 @@ impl ElfFile {
         }
 
         // Serialize segment data with proper padding
-        for entry in &self.segment_entries {
+        for (header, entry) in program_headers.iter().zip(&self.segment_entries) {
             if entry.data.is_empty() {
                 continue; // Skip empty segments (e.g., BSS)
             }
 
             // skip note segment because it is already added
-            if entry.header.is_note_segment() {
+            if header.is_note_segment() {
                 continue;
             }
 
-            let offset = entry.header.get_file_offset() as usize;
+            let offset = header.get_file_offset() as usize;
             
             // Pad with zeros if needed
             if bytes.len() < offset {
@@ -338,7 +406,7 @@ impl ElfFile {
             segment_entries: program_headers
                 .into_iter()
                 .zip(segments)
-                .map(|(header, data)| SegmentEntry::new(header, data))
+                .map(|(header, data)| SegmentEntry::new_fixed(header, data))
                 .collect(),
             section,
             alignment : overall_alignment,
