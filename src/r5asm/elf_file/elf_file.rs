@@ -63,12 +63,12 @@ impl ElfFile {
     }
 
     pub fn add_data_section(&mut self, data: DataSection, vaddr: u64) {
-        let size = data.data.len() as u64;
+        let size = data.get_size() as u64;
         let alignment = self.alignment as u64;
         let offset = self.next_segment_offset();
         let phdr = ProgramHeader::new_data_program_header(offset, vaddr, size, size, alignment);
         self.program_headers.push(phdr);
-        self.segments.push(data.data);
+        self.segments.push(data.into());
         self.update_header();
     }
 
@@ -106,12 +106,12 @@ impl ElfFile {
 
     // Add read-only section to the ELF file
     pub fn add_read_only_section(&mut self, data: ReadOnlySection, vaddr: u64) {
-        let size = data.data.len() as u64;
+        let size = data.get_size() as u64;
         let alignment = self.alignment as u64;
         let offset = self.next_segment_offset();
         let phdr = ProgramHeader::new_readonly_data_program_header(offset, vaddr, size, size, alignment);
         self.program_headers.push(phdr);
-        self.segments.push(data.data);
+        self.segments.push(data.into());
         self.update_header();
     }
 

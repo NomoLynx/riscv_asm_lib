@@ -8,7 +8,7 @@ use super::*;
 
 #[derive(PartialEq, Eq)]
 pub struct DataSection {
-    pub data: Vec<u8>,
+    data: Vec<u8>,
 }
 
 impl DataSection {
@@ -37,6 +37,11 @@ impl DataSection {
     pub fn get_size(&self) -> usize {
         self.data.len()
     }
+
+    /// Convert data section into raw bytes
+    pub fn into_data(self) -> Vec<u8> {
+        self.data
+    }
 }
 
 impl Default for DataSection {
@@ -46,6 +51,12 @@ impl Default for DataSection {
 }
 
 pub type ReadOnlySection = DataSection;
+
+impl From<DataSection> for Vec<u8> {
+    fn from(data_section: DataSection) -> Self {
+        data_section.into_data()
+    }
+}
 
 impl From<Vec<u8>> for DataSection {
     fn from(data: Vec<u8>) -> Self {
