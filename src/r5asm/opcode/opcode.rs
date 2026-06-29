@@ -13,6 +13,20 @@ pub enum OpCode {
 
 impl OpCode {
 
+     pub fn need_offset_compute_address(&self) -> bool {
+        match self {
+            Self::Auipc => true, 
+            Self::Beq | 
+            Self::Bne |
+            Self::Blt | 
+            Self::Bge |
+            Self::Bltu |
+            Self::Bgeu |
+            Self::Jal => true,
+            _ => false,
+        }
+    }
+
     pub (crate) fn from_str(s: &str) -> Option<Self> {
         match s.to_ascii_uppercase().as_str() {
             "LUI" => Some(Self::Lui),

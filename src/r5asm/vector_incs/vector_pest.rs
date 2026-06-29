@@ -2,11 +2,11 @@ use super::vector_inc::{VLoadKind, VStoreKind, VWidth, ValueForm};
 
 pub fn parse_value_form(inc_name: &str) -> Option<ValueForm> {
     let lower = inc_name.to_ascii_lowercase();
-    if lower.ends_with(".vv") || lower.ends_with(".mm") || lower.ends_with(".vs") {
+    if lower.ends_with(".vv") || lower.ends_with(".v.v") || lower.ends_with(".mm") || lower.ends_with(".vs") {
         Some(ValueForm::VV)
-    } else if lower.ends_with(".vx") {
+    } else if lower.ends_with(".vx") || lower.ends_with(".v.x") {
         Some(ValueForm::VX)
-    } else if lower.ends_with(".vi") {
+    } else if lower.ends_with(".vi") || lower.ends_with(".v.i") {
         Some(ValueForm::VI)
     } else {
         None
