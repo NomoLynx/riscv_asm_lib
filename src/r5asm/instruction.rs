@@ -1689,6 +1689,30 @@ impl Instruction {
         self.name.clone().to_uppercase()
     }
 
+    /// get the original instruction name (e.g. "vadd.vv", "lw")
+    pub fn get_instruction_name(&self) -> &str {
+        &self.name
+    }
+
+    /// get the instruction option string (e.g. "v0.t")
+    pub fn get_instruction_option(&self) -> Option<&str> {
+        self.option.as_deref()
+    }
+
+    /// Determine element width from instruction name (e.g. "vadd.vv" has no width suffix -> use SEW)
+    pub fn get_elem_width_from_name(name: &str) -> Option<usize> {
+        let lower = name.to_lowercase();
+        if lower.contains("1024") { return Some(128); }
+        if lower.contains("512") { return Some(64); }
+        if lower.contains("256") { return Some(32); }
+        if lower.contains("128") { return Some(16); }
+        if lower.contains("64") { return Some(8); }
+        if lower.contains("32") { return Some(4); }
+        if lower.contains("16") { return Some(2); }
+        if lower.contains("8") { return Some(1); }
+        None
+    }
+
     pub fn get_op_code(&self) -> Result<OpCode, AsmError> {
         if let Some(op) = OpCode::from_str(&self.name) {
             Ok(op)
