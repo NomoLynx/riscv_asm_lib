@@ -125,6 +125,7 @@ pub fn build_asm_solution(asm_solution:&ASMSolution, config:&mut CodeGenConfigur
 }
 
 /// build the asm file to get output file, file_path is the input file, output_file_name is the output file name
+/// for general build, please use [`build_asm_solution`] instead, which will handle data file and data folder automatically
 pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
     //check if has md data file or data folder
     let is_data_md_file_exist = if let Some((folder, file)) = get_additional_file_and_folder(file_path) {
