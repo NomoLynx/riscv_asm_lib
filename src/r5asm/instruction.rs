@@ -1700,7 +1700,7 @@ impl Instruction {
     }
 
     /// Determine element width from instruction name (e.g. "vadd.vv" has no width suffix -> use SEW)
-    fn get_elem_width_from_name(name: &str) -> Option<usize> {
+    pub fn get_elem_width_from_name(name: &str) -> Option<usize> {
         let lower = name.to_lowercase();
         if lower.contains("1024") { return Some(128); }
         if lower.contains("512") { return Some(64); }
@@ -1711,11 +1711,6 @@ impl Instruction {
         if lower.contains("16") { return Some(2); }
         if lower.contains("8") { return Some(1); }
         None
-    }
-	
-	/// Get effective element width: explicit width from name takes priority over SEW
-    pub fn get_elem_width(&self, hart_id: HartId, name: &str) -> usize {
-        Self::get_elem_width_from_name(name).unwrap_or_else(|| self.get_sew_bytes(hart_id))
     }
 
     pub fn get_op_code(&self) -> Result<OpCode, AsmError> {
