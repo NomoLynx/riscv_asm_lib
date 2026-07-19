@@ -958,7 +958,7 @@ impl AsmProgram {
             .collect::<Vec<_>>()
     }
 
-    pub (crate) fn get_labels(&'_ self) -> LabelTable<'_> {
+    pub fn get_labels(&'_ self) -> LabelTable<'_> {
         let mut r = LabelTable::default();
         let mut id = 0;
         for section in self.sections.iter() {
