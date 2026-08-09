@@ -1,6 +1,6 @@
 use super::imm_macro::ImmMacro;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Imm {
     Value(String),
     ImmMacro(ImmMacro),

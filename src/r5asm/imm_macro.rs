@@ -3,7 +3,7 @@ use pest::iterators::Pair;
 use core_utils::debug::*;
 use super::{asm_error::AsmError, r5asm_pest::Rule};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImmMacro {
     PtrSize
 }

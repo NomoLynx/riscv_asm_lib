@@ -13,6 +13,8 @@ use super::basic_instruction_extensions::BasicInstructionExtensions;
 use super::{code_gen_config::CodeGenConfiguration, opcode::OpCode, r5asm_pest::*, register::Register};
 
 use std::fmt;
+use std::fmt::Display;
+use std::hash::Hasher;
 
 macro_rules! create_register_name_same_fn {
     ($fn_name:ident, $reg:ident) => {
@@ -2722,5 +2724,28 @@ fn option_to_string2(option:Option<&String>, none_value:&str, prefix:&str) -> St
     match option {
         Some(n) => format!("{prefix}{n}"),
         None => none_value.to_owned(),
+    }
+}
+
+impl std::hash::Hash for Instruction {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.r0_name.hash(state);
+        self.r1_name.hash(state);
+        self.r2_name.hash(state);
+        self.r3_name.hash(state);
+        self.imm.hash(state);
+        self.rel_fun.hash(state);
+        self.option.hash(state);
+    }
+}
+
+impl Eq for Instruction {
+
+}
+
+impl Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.generate_code_string())
     }
 }
