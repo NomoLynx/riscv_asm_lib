@@ -10,7 +10,7 @@ use super::{code_gen_config::CodeGenConfiguration, machinecode::MachineCode, r5a
 
 /// Represents the names of directives in R5ASM assembly language.
 /// These directives are used to control the assembly process, define data, and set various options.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DirectiveName {
     Align,
     File,
@@ -161,7 +161,7 @@ impl From<String> for DirectiveName {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Directive {
     inc_name : DirectiveName,
 

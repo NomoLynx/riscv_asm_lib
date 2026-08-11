@@ -1236,8 +1236,16 @@ impl AsmProgram {
         self.sections.append(&mut asm.sections)
     }
 
+    /// get all sections in the program
     pub fn get_sections(&self) -> &Vec<Section> {
         &self.sections
+    }
+
+    /// get all sections with type TEXT
+    pub fn get_code_sections(&self) -> Vec<&Section> {
+        self.sections.iter()
+            .filter(|x| x.get_section_type() == SectionType::Text)
+            .collect::<Vec<_>>()
     }
 
     /// get the maximum offset of all instructions in text sections

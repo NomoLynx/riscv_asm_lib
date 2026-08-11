@@ -2,6 +2,7 @@ use core_utils::number::get_i64_from_str;
 use pest::iterators::Pair;
 use pest_derive::Parser;
 use std::collections::HashMap;
+use std::fmt::Display;
 use super::asm_error::AsmError;
 use super::label_offset::*;
 use super::external_label::*;
@@ -294,7 +295,7 @@ impl GenerateCode for SectionItem2 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SectionItem {
     Lable(String),
     Instruction(Instruction),
@@ -467,6 +468,13 @@ impl GenerateCode for SectionItem {
             Self::Lable(n) => format!("{}:", n.to_string()),
             Self::Instruction(n) => n.generate_code_string(),
         }
+    }
+}
+
+impl Display for SectionItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = self.generate_code_string();
+        write!(f, "{}", s)
     }
 }
 
