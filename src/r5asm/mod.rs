@@ -6,7 +6,7 @@ pub mod r5asm_pest;
 pub mod opcode;
 pub mod instruction;
 mod machinecode;
-mod basic_instruction_extensions;
+pub mod basic_instruction_extensions;
 pub mod register;
 pub mod directive;
 mod compact_inc;

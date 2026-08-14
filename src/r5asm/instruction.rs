@@ -85,9 +85,13 @@ pub struct InstructionSourceRanges {
     pub rel_fun: Option<SourceRange>,
 }
 
+/// Represents a RISC-V assembly instruction, including its name, type, registers, 
+/// immediate values, and source code locations.
 #[derive(Clone, PartialEq)]
 pub struct Instruction {
+    /// instruction name, e.g., "add", "sub", "lw", etc.
     pub(super) name : String, 
+
     pub(super) inc_type : InstructionTypes,
     pub(super) inc_extensions_and_type : BasicInstructionExtensions,
     pub(super) r0_name : Option<String>,
@@ -1558,7 +1562,7 @@ impl Instruction {
         r
     }
 
-    pub (crate) fn new(inc_name:String, inc_type: InstructionTypes, extention_type:BasicInstructionExtensions) -> Self {
+    pub fn new(inc_name:String, inc_type: InstructionTypes, extention_type:BasicInstructionExtensions) -> Self {
         Self { name : inc_name, 
             inc_type, 
             inc_extensions_and_type : extention_type, 
@@ -2638,6 +2642,17 @@ impl Instruction {
         else {
             None
         }
+    }
+
+    pub fn to_egraph_tuple(&self) -> (OpCode, Option<String>, Option<String>, Option<String>, Option<String>, Option<Imm>) {
+        let op_code = self.get_op_code().unwrap();
+        (op_code, 
+            self.r0_name.clone(), 
+            self.r1_name.clone(), 
+            self.r2_name.clone(), 
+            self.r3_name.clone(), 
+            self.imm.clone()
+        )
     }
 }
 

@@ -1,6 +1,8 @@
+use rust_macro::GenIsEnumVariant;
+
 use super::imm_macro::ImmMacro;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, GenIsEnumVariant)]
 pub enum Imm {
     Value(String),
     ImmMacro(ImmMacro),
@@ -12,11 +14,7 @@ impl Imm {
     }
 
     pub fn is_macro(&self) -> bool {
-        matches!(self, Imm::ImmMacro(_))
-    }
-
-    pub fn is_value(&self) -> bool {
-        matches!(self, Imm::Value(_))
+        self.is_immmacro()
     }
 
     /// get string option if imm is Self::Value

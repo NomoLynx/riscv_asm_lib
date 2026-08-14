@@ -360,7 +360,7 @@ impl OpCode {
         Self::to_instruction_type(v as u32)
     }
 
-    pub (crate) fn get_instruction_type_from_string(str:&str) -> Result<InstructionTypes, AsmError> {
+    pub fn get_instruction_type_from_string(str:&str) -> Result<InstructionTypes, AsmError> {
         if let Some(r) = Self::from_str(str) {
             let rr = r.get_instruction_type();
             Ok(rr)

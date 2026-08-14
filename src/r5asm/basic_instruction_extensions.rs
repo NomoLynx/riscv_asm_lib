@@ -1,5 +1,5 @@
 #[derive(Clone, PartialEq)]
-pub (crate) enum BasicInstructionExtensions {
+pub enum BasicInstructionExtensions {
     BaseIntegerInstructions,
     RvcInstructions,
     Rv64128,
