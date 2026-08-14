@@ -2644,6 +2644,7 @@ impl Instruction {
         }
     }
 
+    /// convert instruction to a tuple for e-graph
     pub fn to_egraph_tuple(&self) -> (OpCode, Option<String>, Option<String>, Option<String>, Option<String>, Option<Imm>) {
         let op_code = self.get_op_code().unwrap();
         (op_code, 
@@ -2653,6 +2654,15 @@ impl Instruction {
             self.r3_name.clone(), 
             self.imm.clone()
         )
+    }
+
+    /// set registers and immediate value in the instruction
+    pub fn set_registers_imm(&mut self, r0:Option<String>, r1:Option<String>, r2:Option<String>, r3:Option<String>, imm:Option<Imm>) {
+        self.r0_name = r0;
+        self.r1_name = r1;
+        self.r2_name = r2;
+        self.r3_name = r3;
+        self.imm = imm;
     }
 }
 
