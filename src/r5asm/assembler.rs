@@ -1,5 +1,3 @@
-
-use core_utils::file_object::FileObject;
 use core_utils::filesystem::{folder_exists, get_file_containing_folder, get_file_name_without_extension, get_files_in_folder, path_file_exists, read_file_to_string};
 use pest::Parser;
 
@@ -7,6 +5,8 @@ use core_utils::debug::*;
 use parser_lib::markdown_lang::*;
 use pest::error::Error;
 use pest::error::LineColLocation;
+use crate::r5asm::foreign_data::*;
+
 use super::asm_error::AsmError;
 use super::build_snippet_parameters::BuildSnippetParameters;
 use super::register::Register;
@@ -79,7 +79,7 @@ pub (crate) fn read_data_md(file_path:&str, recalcuate_file_name:bool) -> Result
     let mut r = Vec::default();
     r.push(".data".to_string());
     for table in tables {
-        let inc_strings = super::md_data::md_table_to_asm_data_section(table, &md_file)?;
+        let inc_strings = md_table_to_asm_data_section(table, &md_file)?;
         let incs = inc_strings.join("\r\n");
         r.push(incs);
     }
@@ -179,6 +179,18 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
                 .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("ini file to asm code wrong")))?;
             input = format!("{input}\r\n\r\n{}", data);
             let mut part1 = parse_asm(&data, config)?;
+            part0.merge(&mut part1);
+        }
+
+        // merge packet files in the data folder
+        let folder = get_additional_file_and_folder(file_path).unwrap().0;
+        let files = get_files_in_folder(&folder, ".mermaid");
+        for file in files {
+            let data = generate_equ_statements_from_packet(&file)
+                .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("packet file to asm code wrong")))?;
+            let data_str = format!(".data\r\n{}", data.join("\r\n"));
+            input = format!("{input}\r\n\r\n{}", data_str);
+            let mut part1 = parse_asm(&data_str, config)?;
             part0.merge(&mut part1);
         }
 

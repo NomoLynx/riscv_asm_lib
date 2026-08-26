@@ -588,7 +588,8 @@ impl Instruction {
                         Ok([Self::new_r0_r1_r2_option(inc_name, inc_type, extention_type, p, p1, p2, option)].to_vec()), 
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] |
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::var_name, p2)] |
-                    [_, (Rule::registers, p), (Rule::integer, p2), (Rule::registers, p1)] => {
+                    [_, (Rule::registers, p), (Rule::integer, p2), (Rule::registers, p1)] |
+                    [_, (Rule::registers, p), (Rule::var_name, p2), (Rule::registers, p1)] => {
                         let imm = Self::process_shamt_value(&inc_name, p2)?;
                         let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
                         r.set_imm_from_pair(p2);
