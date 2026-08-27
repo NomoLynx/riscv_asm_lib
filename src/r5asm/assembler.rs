@@ -70,6 +70,11 @@ pub fn parse_asm(input:&str, config:&mut CodeGenConfiguration) -> Result<AsmProg
 const ASM_DATA_FILE_EXTENSION:&str = ".data.md";
 const ASM_DATA_FOLDER_EXTENSION:&str = ".data";
 
+const ASM_INI_FILE_EXTENSION:&str = ".ini";
+const ASM_MERMAID_FILE_EXTENSION:&str = ".mermaid";
+const ASM_MARKDOWN_FILE_EXTENSION:&str = ".md";
+const ASM_MARKDOWN_FILE_EXTENSION2:&str = ".mkd";
+
 pub (crate) fn read_data_md(file_path:&str, recalcuate_file_name:bool) -> Result<String, ParsingError> {
     let data_file = if recalcuate_file_name { get_related_data_file(file_path).ok_or(ParsingError::NoFound((file!().to_string(), line!()).into(), "data file not found".to_string()))? }
                                             else { file_path.to_string() };
@@ -154,7 +159,7 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
 
         //merge files in the data folder
         let folder = get_additional_file_and_folder(file_path).unwrap().0;
-        let files = get_files_in_folder(&folder, ".md");
+        let files = get_files_in_folder(&folder, ASM_MARKDOWN_FILE_EXTENSION);
         for file in files.iter() {
             match read_data_md(file, false)
                     .map_err(|x| AsmError::GeneralError((file!(), line!()).into(), format!("cannot read data md file {file}: {x:?}"))) {
@@ -173,7 +178,7 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
 
         //merge ini files in the data folder
         let folder = get_additional_file_and_folder(file_path).unwrap().0;
-        let files = get_files_in_folder(&folder, ".ini");
+        let files = get_files_in_folder(&folder, ASM_INI_FILE_EXTENSION);
         for file in files {
             let data = parser_lib::ini::ini_file_to_asm_data_code(&file)
                 .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("ini file to asm code wrong")))?;
@@ -182,9 +187,9 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
             part0.merge(&mut part1);
         }
 
-        // merge packet files in the data folder
+        // merge packet files as type template in the data folder
         let folder = get_additional_file_and_folder(file_path).unwrap().0;
-        let files = get_files_in_folder(&folder, ".mermaid");
+        let files = get_files_in_folder(&folder, ASM_MERMAID_FILE_EXTENSION);
         for file in files {
             let data = generate_equ_statements_from_packet(&file)
                 .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("packet file to asm code wrong")))?;
@@ -192,6 +197,20 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
             input = format!("{input}\r\n\r\n{}", data_str);
             let mut part1 = parse_asm(&data_str, config)?;
             part0.merge(&mut part1);
+        }
+
+        // merge mkd file in the data folder as type template
+        let folder = get_additional_file_and_folder(file_path).unwrap().0;
+        let files = get_files_in_folder(&folder, ASM_MARKDOWN_FILE_EXTENSION2);
+        for file in files {
+            let md_file = load_md_file(&file)
+                                    .map_err(|x| AsmError::GeneralError((file!(), line!()).into(), format!("{x:?}")))?;
+            let tables = md_file.get_tables();
+            for table in tables {
+                let v = get_symbol_offsets_from_md_table(&table, &md_file, MDTableOffsetOrder::RowFirst)
+                                                .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("mkd file to asm code wrong")))?;
+                debug_string(format!("mkd file: {file}, table: {:#?}\nsymbol offsets: {:?}", table, v));
+            }
         }
 
         super::write_to_file("temp.s", &input)?;
