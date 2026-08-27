@@ -85,6 +85,17 @@ fn append_symbols_at_offset(
 	}
 }
 
+pub (crate) fn get_equ_asm_statements_from_md_table(table:&Table, md_file:&File, order: MDTableOffsetOrder) -> Result<Vec<String>, ParsingError> {
+	let items = get_symbol_offsets_from_md_table(table, md_file, order)?;
+	let mut r = Vec::default();
+
+	for (offset, symbol) in items {
+		r.push(format!(".equ {symbol}, {offset}"));
+	}
+
+	Ok(r)
+}
+
 /// calculate symbol offsets generated from a markdown data table.
 /// symbols include:
 /// - array_<header>_<col>_<row>

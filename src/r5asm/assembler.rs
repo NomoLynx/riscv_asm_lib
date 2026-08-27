@@ -207,9 +207,12 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
                                     .map_err(|x| AsmError::GeneralError((file!(), line!()).into(), format!("{x:?}")))?;
             let tables = md_file.get_tables();
             for table in tables {
-                let v = get_symbol_offsets_from_md_table(&table, &md_file, MDTableOffsetOrder::RowFirst)
+                let data = get_equ_asm_statements_from_md_table(&table, &md_file, MDTableOffsetOrder::RowFirst)
                                                 .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("mkd file to asm code wrong")))?;
-                debug_string(format!("mkd file: {file}, table: {:#?}\nsymbol offsets: {:?}", table, v));
+                let data_str = format!(".data\r\n{}", data.join("\r\n"));
+                input = format!("{input}\r\n\r\n{}", data_str);
+                let mut part1 = parse_asm(&data_str, config)?;
+                part0.merge(&mut part1);
             }
         }
 
