@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use core_utils::debug::*;
 use core_utils::traits::generate_code::GenerateCode;
 use parser_lib::expr_lang::*;
-use super::super::{asm_error::AsmError, code_gen_config::CodeGenConfiguration, label_offset::LabelOffsetTable, r5asm_pest::{EquTable, Rule, SectionItem, SectionItem2, from_pair_template}};
+use super::super::{asm_error::AsmError, code_gen_config::CodeGenConfiguration, label_offset::{LabelOffsetTable, SectionMetaDataType}, r5asm_pest::{EquTable, Rule, SectionItem, SectionItem2, from_pair_template}};
 
 use super::super::calculate_padding;
 use super::super::elf_section::section_type::*;
@@ -194,6 +194,17 @@ impl Section {
                 let v = expr_to_clrobj(&size_expr_str, Some(&context)).unwrap()
                                 .get_usize().unwrap();
                 table.set_label_size(&label_name, v);
+            }
+        }
+
+        // mark function/object metadata for labels, including labels declared in .data
+        for item in self.get_all_items() {
+            if let Some((label_name, type_name)) = item.get_type_directive() {
+                match type_name.trim() {
+                    "@function" => table.set_label_type(&label_name, SectionMetaDataType::Function),
+                    "@object" => table.set_label_type(&label_name, SectionMetaDataType::Label),
+                    _ => {}
+                }
             }
         }
 

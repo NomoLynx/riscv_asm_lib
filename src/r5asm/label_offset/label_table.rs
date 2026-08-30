@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use core_utils::debug::*;
+
 use super::super::r5asm_pest::SectionItem2;
 use super::LabelOffsetTableEntry;
 use super::Label;
@@ -46,6 +48,7 @@ impl<'a> LabelTable<'a> {
         } else if found_items.is_empty() {
             None
         } else {
+            error_string(format!("Multiple entries found for label '{}'", str_key));
             panic!("Multiple entries found for label '{}'", str_key);
         }
     }

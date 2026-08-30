@@ -212,6 +212,17 @@ impl Directive {
         }
     }
 
+    pub fn get_type_directive(&self) -> Option<(String, String)> {
+        match self.inc_name {
+            DirectiveName::Type => {
+                let name = self.parameters.iter().nth(0).unwrap().to_string();
+                let value = self.parameters.iter().nth(1).unwrap().to_string();
+                Some((name, value))
+            }
+            _ => None,
+        }
+    }
+
     pub fn from_pair(pair:&Pair<Rule>, _config:&mut CodeGenConfiguration) -> Result<Self, AsmError> {
         let inner = pair.to_owned().into_inner();
         let inc_name_str = inner
@@ -240,7 +251,20 @@ impl Directive {
                 .map(|x| {
                     let expr_str = x.as_str().to_string();
                     if x.as_rule() == Rule::expression {
-                        Self::compute_expr_as_u64(&expr_str)
+                        if let Ok(y) = expr_to_clrobj(&expr_str, None) {
+                            if y.is_invalid() {
+                                expr_str
+                            }
+                            else {
+                                y.conv_u64()
+                                    .and_then(|v| v.u64())
+                                    .map(|v| format!("{v}"))
+                                    .unwrap_or(expr_str)
+                            }
+                        }
+                        else {
+                            expr_str
+                        }
                     }
                     else {
                         expr_str
@@ -533,7 +557,8 @@ impl Directive {
             }
             _ => {
                 for i in 0..self.parameters.len() {
-                    if self.parameters[i] == old_value {
+                    let current = self.parameters[i].trim().to_string();
+                    if current == old_value {
                         self.parameters[i] = new_value.to_string();
                     }
                 }

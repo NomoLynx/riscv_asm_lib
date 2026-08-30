@@ -135,10 +135,26 @@ impl LabelOffsetTable {
         }
     }
 
+    /// set the metadata kind for a label, e.g. @function or @object
+    pub fn set_label_type(&mut self, label: &str, metadata_type: SectionMetaDataType) {
+        for entry in self.entries.iter_mut() {
+            if entry.label == label.into() {
+                entry.meta_data.set_label_type(metadata_type.clone());
+            }
+        }
+    }
+
     /// get all global labels
     pub fn get_global_labels(&self) -> Vec<&LabelOffsetTableEntry> {
         self.entries.iter()
             .filter(|entry| entry.meta_data.is_global())
+            .collect()
+    }
+
+    /// get all global function labels
+    pub fn get_global_function_labels(&self) -> Vec<&LabelOffsetTableEntry> {
+        self.entries.iter()
+            .filter(|entry| entry.meta_data.is_global() && entry.meta_data.is_function())
             .collect()
     }
 }
@@ -216,6 +232,10 @@ impl LabelOffsetTableEntry {
     pub fn get_symbol_size(&self) -> usize {
         self.meta_data.get_size().copied()
             .unwrap_or(0)
+    }
+
+    pub fn is_function(&self) -> bool {
+        self.meta_data.is_function()
     }
 
     pub fn get_sequence_number(&self) -> usize {

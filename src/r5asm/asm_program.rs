@@ -456,6 +456,7 @@ impl AsmProgram {
 
     fn get_machine_code_from_data(&self, section_type:SectionType) -> Result<Vec<MachineCode>, AsmError> {
         let mut data_bin = Vec::default();
+        let labels = self.get_labels();
         let sections = self.sections.iter().filter(|x| x.get_section_type() == section_type);
         for section in sections {
             for item2 in section.get_all_items() {
@@ -468,7 +469,17 @@ impl AsmProgram {
                     },
                     SectionItem::Instruction(_) => return Err(AsmError::GeneralError((file!(), line!()).into(), format!("instruction cannot be processed here. It has other function."))),
                     SectionItem::Directive(n) => {
-                        if let Some(data) = n.get_machine_code() {
+                        // Resolve symbolic operands in data directives, e.g. `.word function_add`.
+                        let mut directive = n.clone();
+                        for label in labels.keys() {
+                            let label_name = label.name();
+                            if let Some(label_item) = labels.get(label_name) {
+                                let addr = label_item.get_offset();
+                                directive.replace_parameter(label_name, &addr.to_string());
+                            }
+                        }
+
+                        if let Some(data) = directive.get_machine_code() {
                             //debug_string(format!("Directive Generation: {n:?} => {data:?} @ {offset}/0x{offset:X}"));
                             data_bin.push(data)
                         }
@@ -1256,3 +1267,43 @@ impl AsmProgram {
             .and_then(|x| x.get_maximum_offset())
     }
 }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn data_word_resolves_text_function_label_address() {
+            let mut config = CodeGenConfiguration::default();
+            let input = ".text\n\
+    function_add:\n\
+    addi a0, a0, 1\n\
+    .data\n\
+    .word function_add\n";
+
+            let mut program = crate::r5asm::assembler::parse_asm(input, &mut config)
+                .expect("program should parse");
+            program.second_round(&mut config).expect("second round should pass");
+            program.third_round().expect("third round should pass");
+
+            let _segment_headers = program.generate_program_headers(&mut config)
+                .expect("segment layout should be generated");
+
+            let labels = program.get_labels();
+            let function_addr = labels
+                .get("function_add")
+                .expect("function label should exist")
+                .get_offset();
+
+            let data_machine_codes = program
+                .get_machine_code_from_data(SectionType::Data)
+                .expect("data section should generate machine code");
+            let data_bytes = data_machine_codes
+                .into_iter()
+                .flat_map(|x| x.to_vec())
+                .collect::<Vec<_>>();
+
+            assert!(data_bytes.len() >= 4, "data section should contain at least one .word");
+            assert_eq!(&data_bytes[0..4], &(function_addr as u32).to_le_bytes());
+        }
+    }

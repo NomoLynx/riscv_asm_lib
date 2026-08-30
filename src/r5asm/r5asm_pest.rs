@@ -173,6 +173,12 @@ impl SectionItem2 {
         r
     }
 
+    pub fn get_type_directive(&self) -> Option<(String, String)> {
+        let r = self.item.get_directive()
+            .and_then(|x| x.get_type_directive());
+        r
+    }
+
     pub fn is_inc(&self) -> bool {
         self.item.is_inc()
     }

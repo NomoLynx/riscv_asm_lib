@@ -13,8 +13,20 @@ impl SectionMetaData {
         self.scope = SectionMetaDataScope::Global;
     }
 
+    pub fn set_function(&mut self) {
+        self.metadata_type = SectionMetaDataType::Function;
+    }
+
+    pub fn set_label_type(&mut self, metadata_type: SectionMetaDataType) {
+        self.metadata_type = metadata_type;
+    }
+
     pub fn is_global(&self) -> bool {
         self.get_scope().is_global()
+    }
+
+    pub fn is_function(&self) -> bool {
+        matches!(self.metadata_type, SectionMetaDataType::Function)
     }
 }
 
