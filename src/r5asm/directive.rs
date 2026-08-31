@@ -565,6 +565,18 @@ impl Directive {
             }
         }
     }
+
+    /// true when the directive currently references the given parameter token.
+    pub fn contains_parameter(&self, value:&str) -> bool {
+        match self.get_name() {
+            DirectiveName::Size => {
+                self.parameters.iter().any(|param| param.trim().contains(value))
+            }
+            _ => {
+                self.parameters.iter().any(|param| param.trim() == value)
+            }
+        }
+    }
 }
 
 impl GenerateCode for Directive {

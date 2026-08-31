@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use core_utils::filesystem::write_to_file;
 use pest::iterators::Pair;
@@ -249,7 +249,7 @@ impl AsmProgram {
     }
 
     fn get_labeled_directive_size(&self) -> Result<HashMap<String, usize>, AsmError> {
-        let l = self.get_labels();
+        let l = self.get_labels()?;
         let labels = l.keys();
         let mut r = HashMap::default();
         for n in labels.into_iter() {
@@ -454,9 +454,27 @@ impl AsmProgram {
         length
     }
 
+    fn get_duplicated_text_labels(&self) -> HashSet<String> {
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for section in self.get_txt_sections() {
+            let labels = section.get_labels_and_next_items();
+            for (label, _) in labels {
+                if let Some(name) = label.get_label() {
+                    *counts.entry(name.to_string()).or_insert(0usize) += 1;
+                }
+            }
+        }
+
+        counts.into_iter()
+            .filter(|(_, count)| *count > 1)
+            .map(|(name, _)| name)
+            .collect()
+    }
+
     fn get_machine_code_from_data(&self, section_type:SectionType) -> Result<Vec<MachineCode>, AsmError> {
         let mut data_bin = Vec::default();
-        let labels = self.get_labels();
+        let labels = self.get_labels()?;
+        let duplicated_text_labels = self.get_duplicated_text_labels();
         let sections = self.sections.iter().filter(|x| x.get_section_type() == section_type);
         for section in sections {
             for item2 in section.get_all_items() {
@@ -471,8 +489,25 @@ impl AsmProgram {
                     SectionItem::Directive(n) => {
                         // Resolve symbolic operands in data directives, e.g. `.word function_add`.
                         let mut directive = n.clone();
+                        if let Some(duplicated_label) = duplicated_text_labels.iter()
+                                                                        .find(|name| directive.contains_parameter(name)) {
+                            return Err(AsmError::GeneralError(
+                                (file!(), line!()).into(),
+                                format!("label '{duplicated_label}' is defined multiple times in .text and cannot be referenced from data section"),
+                            ));
+                        }
+
                         for label in labels.keys() {
                             let label_name = label.name();
+                            if duplicated_text_labels.contains(label_name) {
+                                continue;
+                            }
+
+                            // Only replace the label if it is actually used in the directive.
+                            if !directive.contains_parameter(label_name) {
+                                continue;
+                            }
+
                             if let Some(label_item) = labels.get(label_name) {
                                 let addr = label_item.get_offset();
                                 directive.replace_parameter(label_name, &addr.to_string());
@@ -516,7 +551,7 @@ impl AsmProgram {
         }
 
         let regs = Register::new();
-        let labels = self.get_labels().into();
+        let labels = self.get_labels()?.into();
         let all_sections = &mut self.sections;
         let sections = all_sections.iter_mut().filter(|x| x.get_section_type() == SectionType::Text);
         for section in sections {
@@ -550,7 +585,7 @@ impl AsmProgram {
     /// write debug asm code to file text_section_debug.s
     /// this function is mainly for debug purpose
     fn generate_debug_asm_code(&self, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
-        let labels = self.get_labels();
+        let labels = self.get_labels()?;
         let regs = Register::new();
 
         if !config.get_generate_bin_and_code() {
@@ -719,7 +754,7 @@ impl AsmProgram {
     /// get entry address, with assumption that the text segment is always the 1st segment and entry address is from the segment offset
     /// return error when neither _start nor main is defined
     pub fn get_entry_address2(&self) -> Result<usize, AsmError> {
-        let labels = self.get_labels();
+        let labels = self.get_labels()?;
         if let Some(start) = labels.get("_start") {
             let entry_address = start.get_offset();
             output_string(format!("Entry label '_start' @ {entry_address} (0x{entry_address:X})"));
@@ -943,7 +978,7 @@ impl AsmProgram {
     fn get_code_bin(&self) -> Result<TextSection, AsmError> {
         let mut code_bin = Vec::default();
         let regs = Register::new();
-        let labels = self.get_labels();
+        let labels = self.get_labels()?;
 
         for section in self.get_txt_sections() {
             for inc in section.get_instructions() {                
@@ -969,7 +1004,7 @@ impl AsmProgram {
             .collect::<Vec<_>>()
     }
 
-    pub fn get_labels(&'_ self) -> LabelTable<'_> {
+    pub fn get_labels(&'_ self) -> Result<LabelTable<'_>, AsmError> {
         let mut r = LabelTable::default();
         let mut id = 0;
         for section in self.sections.iter() {
@@ -1002,7 +1037,7 @@ impl AsmProgram {
             }
         }
 
-        r
+        Ok(r)
     }
 
     pub (crate) fn get_equals(&self) -> EquTable {
@@ -1289,7 +1324,8 @@ impl AsmProgram {
             let _segment_headers = program.generate_program_headers(&mut config)
                 .expect("segment layout should be generated");
 
-            let labels = program.get_labels();
+            let labels = program.get_labels()
+                                                .expect("labels should be available");
             let function_addr = labels
                 .get("function_add")
                 .expect("function label should exist")
@@ -1305,5 +1341,67 @@ impl AsmProgram {
 
             assert!(data_bytes.len() >= 4, "data section should contain at least one .word");
             assert_eq!(&data_bytes[0..4], &(function_addr as u32).to_le_bytes());
+        }
+
+        #[test]
+        fn data_word_rejects_duplicated_text_label_reference() {
+            let mut config = CodeGenConfiguration::default();
+            let input = ".text\n\
+    function_add:\n\
+    addi a0, a0, 1\n\
+    function_add:\n\
+    addi a0, a0, 2\n\
+    .data\n\
+    .word function_add\n";
+
+            let mut program = crate::r5asm::assembler::parse_asm(input, &mut config)
+                .expect("program should parse");
+            program.second_round(&mut config).expect("second round should pass");
+            program.third_round().expect("third round should pass");
+
+            let _segment_headers = program.generate_program_headers(&mut config)
+                .expect("segment layout should be generated");
+
+            let data_result = program.get_machine_code_from_data(SectionType::Data);
+            assert!(data_result.is_err(), "data section should reject duplicated text label references");
+
+            match data_result {
+                Err(AsmError::GeneralError(_, msg)) => {
+                    assert!(msg.contains("defined multiple times in .text"), "unexpected error: {msg}");
+                }
+                Err(other) => panic!("unexpected error type: {other:?}"),
+                Ok(_) => panic!("expected error for duplicated label reference"),
+            }
+        }
+
+        #[test]
+        fn data_word_ignores_duplicated_text_label_when_not_used() {
+            let mut config = CodeGenConfiguration::default();
+            let input = ".text\n\
+    function_add:\n\
+    addi a0, a0, 1\n\
+    function_add:\n\
+    addi a0, a0, 2\n\
+    .data\n\
+    .word 42\n";
+
+            let mut program = crate::r5asm::assembler::parse_asm(input, &mut config)
+                .expect("program should parse");
+            program.second_round(&mut config).expect("second round should pass");
+            program.third_round().expect("third round should pass");
+
+            let _segment_headers = program.generate_program_headers(&mut config)
+                .expect("segment layout should be generated");
+
+            let data_machine_codes = program
+                .get_machine_code_from_data(SectionType::Data)
+                .expect("data section should succeed when duplicated text label is unused");
+            let data_bytes = data_machine_codes
+                .into_iter()
+                .flat_map(|x| x.to_vec())
+                .collect::<Vec<_>>();
+
+            assert!(data_bytes.len() >= 4, "data section should contain at least one .word");
+            assert_eq!(&data_bytes[0..4], &42u32.to_le_bytes());
         }
     }

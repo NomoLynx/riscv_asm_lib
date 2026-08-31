@@ -266,7 +266,7 @@ pub fn build_asm_snippet(input:&str, parameters:&BuildSnippetParameters) -> Resu
             
             ast.update_label_virtual_address(None)?;
             let regs = Register::new();
-            let labels = ast.get_labels();
+            let labels = ast.get_labels()?;
 
             // generate machine code for all txt sections
             let mut code_bin = Vec::default();         
