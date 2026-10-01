@@ -1,7 +1,13 @@
+use std::path::{Path, PathBuf};
+
+use core_utils::file_object::FileObject;
+use core_utils::string::string_to_bool;
+use core_utils::number::get_u64_from_str;
 use core_utils::filesystem::{folder_exists, get_file_containing_folder, get_file_name_without_extension, get_files_in_folder, path_file_exists, read_file_to_string};
 use pest::Parser;
 
 use core_utils::debug::*;
+use parser_lib::ini::{get_ini_properties, parse_ini_from_file};
 use parser_lib::markdown_lang::*;
 use pest::error::Error;
 use pest::error::LineColLocation;
@@ -125,6 +131,120 @@ pub fn get_additional_file_and_folder(file_path:&str) -> Option<(String, String)
     }
 }
 
+fn parse_ini_u64(value: &str) -> u64 {
+    let r = get_u64_from_str(value).unwrap_or(0);
+    r
+}
+
+fn trim_ini_value(value: &str) -> String {
+    value.trim().trim_matches('"').to_string()
+}
+
+fn resolve_ini_file_path(base_folder: &Path, raw_value: &str) -> String {
+    let path_value = trim_ini_value(raw_value);
+    let candidate = PathBuf::from(&path_value);
+    if candidate.is_absolute() {
+        path_value
+    } else {
+        base_folder.join(candidate).to_string_lossy().to_string()
+    }
+}
+
+pub fn load_asm_solution_from_ini(ini_file_path: &str) -> Result<(ASMSolution, CodeGenConfiguration), AsmError> {
+    let ini = parse_ini_from_file(ini_file_path)
+        .map_err(|e| AsmError::GeneralError((file!(), line!()).into(), format!("failed to parse ini: {e:?}")))?;
+
+    let properties = get_ini_properties(&ini);
+    let ini_base_folder = Path::new(ini_file_path)
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."));
+
+    let main_file_raw = properties
+        .get("asm_main")
+        .or_else(|| properties.get("main"))
+        .or_else(|| properties.get("main_file"))
+        .cloned()
+        .unwrap_or_else(|| "main.s".to_string());
+    let main_file_path = resolve_ini_file_path(&ini_base_folder, &main_file_raw);
+
+    let source_paths = properties
+        .get("asm_source")
+        .or_else(|| properties.get("source"))
+        .or_else(|| properties.get("source_files"))
+        .map(|value| {
+            value.split(',')
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(|part| resolve_ini_file_path(&ini_base_folder, part))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let main_content = std::fs::read_to_string(&main_file_path)
+        .map_err(|e| AsmError::GeneralError((file!(), line!()).into(), format!("failed to read main asm file '{main_file_path}': {e}")))?;
+
+    let main_stem = get_file_name_without_extension(&main_file_path)
+        .unwrap_or("main".to_string())
+        .to_string();
+
+    let mut solution = ASMSolution::new(FileObject::new(&main_stem, "s", &main_content));
+
+    for item in source_paths {
+        if item.is_empty() || item == main_file_path {
+            continue;
+        }
+
+        let content = std::fs::read_to_string(&item)
+            .map_err(|e| AsmError::GeneralError((file!(), line!()).into(), format!("failed to read source file '{item}': {e}")))?;
+
+        let file_stem = get_file_name_without_extension(&item)
+            .unwrap_or("source".to_string())
+            .to_string();
+        let ext = Path::new(&item)
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("s")
+            .to_string();
+
+        solution.add_source_file(FileObject::new(&file_stem, &ext, &content));
+    }
+
+    let mut config = CodeGenConfiguration::default();
+
+    if let Some(value) = properties.get("replace_pseudo_code").or_else(|| properties.get("codegen_replace_pseudo_code")) {
+        config.set_replace_pseudo_code(string_to_bool(value));
+    }
+
+    if let Some(value) = properties.get("generate_bin_and_code").or_else(|| properties.get("codegen_generate_bin_and_code")) {
+        config.set_generate_bin_and_code(string_to_bool(value));
+    }
+
+    if let Some(value) = properties.get("build_target").or_else(|| properties.get("codegen_build_target")) {
+        config.set_build_target(value.trim().parse::<u8>().unwrap_or(8));
+    }
+
+    let virtual_address = properties
+        .get("virtual_address_start")
+        .or_else(|| properties.get("linker_virtual_address_start"))
+        .or_else(|| properties.get("start_address"))
+        .or_else(|| properties.get("linker_start_address"));
+
+    if let Some(value) = virtual_address {
+        config.get_linker_config_mut().set_virutual_address_start(parse_ini_u64(value));
+    }
+
+    if let Some(value) = properties.get("is_build_lib").or_else(|| properties.get("linker_is_build_lib")) {
+        config.get_linker_config_mut().set_is_build_lib(string_to_bool(value));
+    }
+
+    if let Some(value) = properties.get("soname").or_else(|| properties.get("linker_soname")) {
+        config.get_linker_config_mut().set_soname(Some(value.trim().to_string()));
+    }
+
+    Ok((solution, config))
+}
+
 /// build asm solution which contains one or more source files plus optional data files
 pub fn build_asm_solution(asm_solution:&ASMSolution, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
     if asm_solution.has_multiple_source_files() {
@@ -136,6 +256,32 @@ pub fn build_asm_solution(asm_solution:&ASMSolution, config:&mut CodeGenConfigur
     }
 
     build_asm(&asm_solution.get_main_file_name(), &asm_solution.get_output_file_name(), config)
+}
+
+/// build asm directly from an ini file. The ini drives both ASMSolution and CodeGenConfiguration.
+pub fn build_asm_solution_from_ini(ini_file_path:&str) -> Result<(), AsmError> {
+    let (solution, mut config) = load_asm_solution_from_ini(ini_file_path)?;
+    build_asm_solution(&solution, &mut config)
+}
+
+/// build asm from ini and optionally copy resulting elf to a requested output file name.
+pub fn build_asm_from_ini(ini_file_path:&str, output_file_name:&str) -> Result<(), AsmError> {
+    let (solution, mut config) = load_asm_solution_from_ini(ini_file_path)?;
+    build_asm_solution(&solution, &mut config)?;
+
+    let generated_output = solution.get_output_file_name();
+    if !output_file_name.is_empty() && generated_output != output_file_name {
+        std::fs::copy(&generated_output, output_file_name).map_err(|e| {
+            AsmError::GeneralError(
+                (file!(), line!()).into(),
+                format!(
+                    "failed to copy generated output '{generated_output}' to '{output_file_name}': {e}"
+                ),
+            )
+        })?;
+    }
+
+    Ok(())
 }
 
 /// build the asm file to get output file, file_path is the input file, output_file_name is the output file name
@@ -249,6 +395,33 @@ mod tests {
             .expect_err("input should fail to parse on line 3");
 
         assert_eq!(pest_error_to_line(&err), 3);
+    }
+
+    #[test]
+    fn load_asm_solution_from_ini_sets_linker_config_and_sources() {
+        let dir = std::env::temp_dir().join("r5asm_ini_test");
+        let _ = std::fs::create_dir_all(&dir);
+
+        let main_path = dir.join("main.s");
+        let helper_path = dir.join("helper.s");
+        let ini_path = dir.join("build.ini");
+
+        std::fs::write(&main_path, ".text\naddi x1, x2, 1\n").unwrap();
+        std::fs::write(&helper_path, ".text\naddi x3, x4, 2\n").unwrap();
+
+        let ini = format!(
+            "[asm]\nmain = main.s\nsource = helper.s\n\n[linker]\nvirtual_address_start = 0x81000000\n\n[codegen]\nreplace_pseudo_code = true\ngenerate_bin_and_code = false\nbuild_target = 8\n"
+        );
+        std::fs::write(&ini_path, ini).unwrap();
+
+        let (solution, config) = load_asm_solution_from_ini(ini_path.to_str().unwrap()).unwrap();
+
+        assert_eq!(solution.get_source_files().len(), 2);
+        assert!(solution.get_combined_source().contains("addi x1, x2, 1"));
+        assert!(solution.get_combined_source().contains("addi x3, x4, 2"));
+        assert_eq!(config.get_linker_config().get_virutual_address_start(), 0x8100_0000);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
 
