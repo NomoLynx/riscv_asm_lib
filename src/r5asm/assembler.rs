@@ -125,8 +125,16 @@ pub fn get_additional_file_and_folder(file_path:&str) -> Option<(String, String)
     }
 }
 
-/// build asm solution which contains input, output file name, and data file
+/// build asm solution which contains one or more source files plus optional data files
 pub fn build_asm_solution(asm_solution:&ASMSolution, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
+    if asm_solution.has_multiple_source_files() {
+        let input = asm_solution.get_combined_source();
+        let mut ast = parse_asm(&input, config)?;
+        ast.second_round(config)?;
+        ast.third_round()?;
+        return ast.link_to_bin(&asm_solution.get_output_file_name(), config);
+    }
+
     build_asm(&asm_solution.get_main_file_name(), &asm_solution.get_output_file_name(), config)
 }
 

@@ -5,15 +5,20 @@ pub use core_utils::file_object::FileObject;
 pub struct ASMSolution {
     container_path: Option<String>,
     main_file : FileObject, // FileObject is a struct that contains the file path and the file content
+    source_files: Vec<FileObject>,
     data_file : Option<FileObject>,
     folder_name : HashMap<String, Vec<FileObject>>,
 }
 
 impl ASMSolution {
     pub fn new(main_file: FileObject) -> Self {
+        let mut source_files = Vec::new();
+        source_files.push(main_file.clone());
+
         Self {
             container_path: None,
             main_file,
+            source_files,
             data_file: None,
             folder_name: HashMap::new(),
         }
@@ -28,6 +33,31 @@ impl ASMSolution {
             self.folder_name.insert(folder_name.to_string(), vec![]);
         }
         self.folder_name.get_mut(folder_name).unwrap().push(file);
+    }
+
+    pub fn add_source_file(&mut self, file: FileObject) {
+        if !self.source_files.iter().any(|x| x.get_file_name() == file.get_file_name() && x.get_file_extension() == file.get_file_extension()) {
+            self.source_files.push(file);
+        }
+    }
+
+    pub fn get_source_files(&self) -> &[FileObject] {
+        &self.source_files
+    }
+
+    pub fn get_combined_source(&self) -> String {
+        let mut combined = String::new();
+        for (idx, file) in self.source_files.iter().enumerate() {
+            if idx > 0 {
+                combined.push_str("\r\n\r\n");
+            }
+            combined.push_str(file.get_content());
+        }
+        combined
+    }
+
+    pub fn has_multiple_source_files(&self) -> bool {
+        self.source_files.len() > 1
     }
 
     pub fn get_main_file(&self) -> &FileObject {
@@ -111,6 +141,12 @@ impl ASMSolution {
         let main_file_path = format!("{}/{}.{}", path, self.main_file.get_file_name(), self.main_file.get_file_extension());
         std::fs::write(main_file_path, self.main_file.get_content()).unwrap();
 
+        // save additional source files
+        for file in self.source_files.iter().skip(1) {
+            let file_path = format!("{}/{}.{}", path, file.get_file_name(), file.get_file_extension());
+            std::fs::write(file_path, file.get_content()).unwrap();
+        }
+
         // save data file
         if let Some(data_file) = &self.data_file {
             let data_file_path = format!("{}/{}.{}", path, data_file.get_file_name(), data_file.get_file_extension());
@@ -142,6 +178,13 @@ impl Display for ASMSolution {
         let mut r = String::new();
         r.push_str(&format!("Main File:\r\n{}\r\n", self.main_file));
 
+        if self.source_files.len() > 1 {
+            r.push_str("Additional source files:\r\n");
+            for file in self.source_files.iter().skip(1) {
+                r.push_str(&format!("{}\r\n", file));
+            }
+        }
+
         if let Some(data_file) = &self.data_file {
             r.push_str(&format!("Data File:\r\n{}\r\n", data_file));
         }
@@ -154,5 +197,21 @@ impl Display for ASMSolution {
         }
 
         write!(f, "{}", r)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn asm_solution_tracks_multiple_source_files() {
+        let mut solution = ASMSolution::new(FileObject::new("main", "s", ".text\naddi x1, x2, 1\n"));
+        solution.add_source_file(FileObject::new("helper", "s", ".text\naddi x3, x4, 2\n"));
+
+        assert!(solution.has_multiple_source_files());
+        assert_eq!(solution.get_source_files().len(), 2);
+        assert!(solution.get_combined_source().contains("addi x1, x2, 1"));
+        assert!(solution.get_combined_source().contains("addi x3, x4, 2"));
     }
 }
