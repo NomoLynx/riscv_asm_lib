@@ -7,6 +7,7 @@ This project used diagram-to-code idea and will need [Rust Macro Internal](https
 
 ## Recent Updates
 
+- **2026-10-03**: Added INI-driven multi-source assembly support. The assembler now accepts multiple `.s` files via `ASMSolution` and relative path resolution from the INI file folder. Dedicated entry points are available for INI-based builds while the original single-file path-based build API remains unchanged.
 - **2026-03-29**: Added and documented RV64 Zbb word-form instructions (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
 - **2026-03-29**: Added explicit bit-manip instruction test coverage references for `zbb_core.s`, `zbb_word.s`, and `zbs_extra.s`.
 
@@ -182,7 +183,40 @@ let program = parse_asm(src, &mut config).expect("assembly failed");
 
 ### Multi-file project (ASMSolution)
 
-the asm file will support data file in .ini format under the <file_name> folder. Or the assembler support the <file_name>.md file at the same folder of .s file. Please see the images
+The assembler supports building from more than one assembly source file through `ASMSolution` and the INI-driven loader. This is useful when a project is split across multiple `.s` modules such as boot code, driver stubs, and application code.
+
+The original single-file builder remains available and unchanged for direct `.s` builds. For INI-driven project builds, the library exposes dedicated APIs that load the project definition from a configuration file and then call the multi-file solution build path.
+
+Example INI for a multi-file project:
+
+```ini
+[asm]
+main = boot.s
+source = crt0.s, drivers.s, app.s, utils.s
+
+[codegen]
+replace_pseudo_code = true
+generate_bin_and_code = false
+build_target = 8
+
+[linker]
+virtual_address_start = 0x81000000
+is_build_lib = false
+soname = firmware
+```
+
+This file can live in the same folder as the `.s` files. Relative paths are resolved relative to the INI file itself, so a project can be built by pointing at the folder-level INI instead of passing a single main file directly.
+
+The INI-based build entry points are:
+
+- `build_asm_solution_from_ini(ini_file_path)`
+- `build_asm_from_ini(ini_file_path, output_file_name)`
+
+The older direct build path remains:
+
+- `build_asm(file_path, output_file_name, config)`
+
+The library also supports per-source data files in `.data.md` or `.data` folders alongside the assembly source, as shown below:
 
 ![Assembly File with data folder](./doc/asm_dir.png)
 ![Assembly file with md file](./doc/asm_md.png)
