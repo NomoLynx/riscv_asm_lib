@@ -32,6 +32,7 @@ pub mod r5inc;
 pub mod foreign_data;
 pub mod vector_incs;
 pub mod code_option;
+pub mod state_machine_code;
 
 // meta modules which provides more info for other compilers
 pub mod meta;

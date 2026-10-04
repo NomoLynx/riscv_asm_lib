@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use core_utils::file_object::FileObject;
 use core_utils::string::string_to_bool;
 use core_utils::number::get_u64_from_str;
-use core_utils::filesystem::{folder_exists, get_file_containing_folder, get_file_name_without_extension, get_files_in_folder, path_file_exists, read_file_to_string};
+use core_utils::filesystem::{folder_exists, get_file_containing_folder, get_file_name_without_extension, get_files_in_folder, path_file_exists, read_file_content, read_file_to_string};
+use parser_lib::mermaid_type::MermaidType;
 use pest::Parser;
 
 use core_utils::debug::*;
@@ -12,6 +13,7 @@ use parser_lib::markdown_lang::*;
 use pest::error::Error;
 use pest::error::LineColLocation;
 use crate::r5asm::foreign_data::*;
+use crate::r5asm::state_machine_code::from_state1_to_asm;
 
 use super::asm_error::AsmError;
 use super::build_snippet_parameters::BuildSnippetParameters;
@@ -341,16 +343,28 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
             part0.merge(&mut part1);
         }
 
-        // merge packet files as type template in the data folder
+        // merge mermaid diagram packet files as type template in the data folder
         let folder = get_additional_file_and_folder(file_path).unwrap().0;
         let files = get_files_in_folder(&folder, ASM_MERMAID_FILE_EXTENSION);
         for file in files {
-            let data = generate_equ_statements_from_packet(&file)
-                .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("packet file to asm code wrong")))?;
-            let data_str = format!(".data\r\n{}", data.join("\r\n"));
-            input = format!("{input}\r\n\r\n{}", data_str);
-            let mut part1 = parse_asm(&data_str, config)?;
-            part0.merge(&mut part1);
+            let file_content = read_file_content(&file)
+                                        .map_err(|_| AsmError::IOError)?;
+            let mermaid = MermaidType::get_mermaid_type_from_string_content(&file_content);
+            match mermaid {
+                Some(MermaidType::Packet(_)) => {
+                    let data = generate_equ_statements_from_packet(&file)
+                        .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("packet file to asm code wrong")))?;
+                    let data_str = format!(".data\r\n{}", data.join("\r\n"));
+                    input = format!("{input}\r\n\r\n{}", data_str);
+                    let mut part1 = parse_asm(&data_str, config)?;
+                    part0.merge(&mut part1);
+                }
+                Some(MermaidType::State(state)) => {
+                    let data = from_state1_to_asm(&state)?;
+                    debug_string(data);
+                }
+                _ => {}
+            }
         }
 
         // merge mkd file in the data folder as type template
