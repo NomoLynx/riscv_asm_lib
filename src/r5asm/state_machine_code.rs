@@ -4,7 +4,7 @@ use parser_lib::mermaid_state::StateGraphProgram;
 use crate::r5asm::asm_error::AsmError;
 
 /// Convert a state graph program into corresponding assembly code using a template.
-pub (crate) fn from_state1_to_asm(state_graph:&StateGraphProgram, init_state:&str) -> Result<String, AsmError> {
+pub (crate) fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmError> {
     let template_text = include_str!("../templates/state_machine.template");
     let mut env = Environment::new();
     env.add_template("main", &template_text).unwrap();
@@ -28,7 +28,6 @@ pub (crate) fn from_state1_to_asm(state_graph:&StateGraphProgram, init_state:&st
                                                     .collect::<Vec<_>>();
 
     let result = template.render(context! {
-        init_state => init_state,
         events => event,
         states => state,
         state_fns => state_fn,

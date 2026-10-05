@@ -12,9 +12,6 @@
 
 state_machine:
 
-    # Initial state
-    li s0, {{init_state}}
-
 # ============================================================
 # Dispatcher
 #
