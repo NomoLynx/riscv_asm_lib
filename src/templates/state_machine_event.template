@@ -10,6 +10,8 @@
 {{current_state_name}}:
 
     lw   t0, 0(a0)
+    call {{process_current_state_name}}
+
 {% for transition in transitions %}
     {{transition}}
 {% endfor %}
@@ -18,5 +20,6 @@
     j dispatch
 
 
-{% for state in states %}{{state}}
+{% for state in states %}
+    {{state}}
 {% endfor %}

@@ -56,6 +56,7 @@ pub fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmE
         let template = env.get_template("state").unwrap();
 
         let result_state = template.render(context! {
+            process_current_state_name => format!("process_{}", current_state_name),
             event_states => event_states,
             current_state_name => current_state_name,
             transitions => transitions,
