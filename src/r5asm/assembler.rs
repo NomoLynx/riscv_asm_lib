@@ -360,7 +360,7 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
                     part0.merge(&mut part1);
                 }
                 Some(MermaidType::State(state)) => {
-                    let data = from_state1_to_asm(&state)?;
+                    let data = from_state1_to_asm(&state, "state_Idle")?;
                     debug_string(data);
                 }
                 _ => {}

@@ -9,3 +9,36 @@
 # ============================================================
 {% for state in states %}{{state}}
 {% endfor %}
+
+state_machine:
+
+    # Initial state
+    li s0, {{init_state}}
+
+# ============================================================
+# Dispatcher
+#
+# state ID
+#     ↓
+# jump table
+#     ↓
+# state handler
+#
+# There is no branch-distance dependency between states.
+# ============================================================
+
+dispatch:
+
+    slli t0, s0, 2          # state * sizeof(address)
+
+    la   t1, state_table
+    add  t1, t1, t0
+
+    lw   t2, 0(t1)           # load handler address
+    jr   t2                  # jump to state handler
+
+.data
+state_table:
+
+{% for state_fn in state_fns %}   {{state_fn}}
+{% endfor %}
