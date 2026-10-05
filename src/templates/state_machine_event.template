@@ -1,0 +1,22 @@
+# ============================================================
+# {{current_state_name}}
+#
+# {% for event_state in event_states %} {{event_state}}
+# {% endfor %}
+#
+# otherwise stay {{current_state_name}}
+# ============================================================
+
+{{current_state_name}}:
+
+    lw   t0, 0(a0)
+{% for transition in transitions %}
+    {{transition}}
+{% endfor %}
+
+    # No transition
+    j dispatch
+
+
+{% for state in states %}{{state}}
+{% endfor %}
