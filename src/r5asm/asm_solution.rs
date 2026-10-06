@@ -8,6 +8,7 @@ pub struct ASMSolution {
     source_files: Vec<FileObject>,
     data_file : Option<FileObject>,
     folder_name : HashMap<String, Vec<FileObject>>,
+    output_folder: Option<String>,
 }
 
 impl ASMSolution {
@@ -21,11 +22,16 @@ impl ASMSolution {
             source_files,
             data_file: None,
             folder_name: HashMap::new(),
+            output_folder: None,
         }
     }
 
     pub fn set_container_path(&mut self, path: &str) {
         self.container_path = Some(path.to_string());
+    }
+
+    pub fn set_output_folder(&mut self, output_folder: &str) {
+        self.output_folder = Some(output_folder.to_string());
     }
 
     pub fn add_file(&mut self, folder_name: &str, file: FileObject) {
@@ -74,11 +80,19 @@ impl ASMSolution {
     }
 
     pub fn get_output_file_name(&self) -> String {
-        if self.container_path.is_none() {
-            format!("{}.elf", self.main_file.get_file_name())
-        }
-        else {
-            format!("{}/{}.elf", self.container_path.as_ref().unwrap(), self.main_file.get_file_name())
+        match (self.container_path.as_ref(), self.output_folder.as_ref()) {
+            (Some(container_path), Some(output_folder)) => {
+                return format!("{}/{}/{}.elf", container_path, output_folder, self.main_file.get_file_name());
+            }
+            (Some(container_path), None) => {
+                return format!("{}/{}.elf", container_path, self.main_file.get_file_name());
+            }
+            (None, Some(output_folder)) => {
+                return format!("{}/{}.elf", output_folder, self.main_file.get_file_name());
+            }
+            (None, None) => {
+                return format!("{}.elf", self.main_file.get_file_name());
+            }
         }
     }
 

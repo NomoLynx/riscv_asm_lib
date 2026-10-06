@@ -170,6 +170,11 @@ pub fn load_asm_solution_from_ini(ini_file_path: &str) -> Result<(ASMSolution, C
         .unwrap_or_else(|| "main.s".to_string());
     let main_file_path = resolve_ini_file_path(&ini_base_folder, &main_file_raw);
 
+    let output_folder_raw = properties
+        .get("asm_output_folder")
+        .or_else(|| properties.get("output_folder"))
+        .cloned();
+
     let source_paths = properties
         .get("asm_source")
         .or_else(|| properties.get("source"))
@@ -192,6 +197,13 @@ pub fn load_asm_solution_from_ini(ini_file_path: &str) -> Result<(ASMSolution, C
 
     let mut solution = ASMSolution::new(FileObject::new(&main_stem, "s", &main_content));
 
+    let ini_base_folder_str = ini_base_folder.to_string_lossy().to_string();
+    solution.set_container_path(&ini_base_folder_str);
+
+    if let Some(output_folder) = output_folder_raw {
+        solution.set_output_folder(&output_folder);
+    }
+    
     for item in source_paths {
         if item.is_empty() || item == main_file_path {
             continue;
@@ -254,10 +266,14 @@ pub fn build_asm_solution(asm_solution:&ASMSolution, config:&mut CodeGenConfigur
         let mut ast = parse_asm(&input, config)?;
         ast.second_round(config)?;
         ast.third_round()?;
-        return ast.link_to_bin(&asm_solution.get_output_file_name(), config);
+        ast.link_to_bin(&asm_solution.get_output_file_name(), config)?;
+    }
+    else {
+        build_asm(&asm_solution.get_main_file_name(), &asm_solution.get_output_file_name(), config)?;
     }
 
-    build_asm(&asm_solution.get_main_file_name(), &asm_solution.get_output_file_name(), config)
+    output_string(format!("built asm file: {}", &asm_solution.get_output_file_name()));
+    Ok(())
 }
 
 /// build asm directly from an ini file. The ini drives both ASMSolution and CodeGenConfiguration.
