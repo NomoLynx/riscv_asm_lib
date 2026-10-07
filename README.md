@@ -7,6 +7,7 @@ This project used diagram-to-code idea and will need [Rust Macro Internal](https
 
 ## Recent Updates
 
+- **2026-10-07**: Added Mermaid-driven state machine code generation. State diagrams can be translated into assembly dispatch code with per-state transition handlers, event IDs, and jump-table dispatch logic.
 - **2026-10-03**: Added INI-driven multi-source assembly support. The assembler now accepts multiple `.s` files via `ASMSolution` and relative path resolution from the INI file folder. Dedicated entry points are available for INI-based builds while the original single-file path-based build API remains unchanged.
 - **2026-03-29**: Added and documented RV64 Zbb word-form instructions (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
 - **2026-03-29**: Added explicit bit-manip instruction test coverage references for `zbb_core.s`, `zbb_word.s`, and `zbs_extra.s`.
@@ -21,6 +22,7 @@ This project used diagram-to-code idea and will need [Rust Macro Internal](https
 - **Pseudo-instruction expansion** — high-level pseudo-instructions are expanded to real machine instructions during a second-round pass.
 - **Compact (C-extension) optimisation** — optionally converts eligible instructions to the 16-bit compressed encoding.
 - **Macro instructions** — user-defined macro instructions are stored in `CodeGenConfiguration` and expanded at assembly time.
+- **Mermaid state-machine generation** — Mermaid state diagrams can be compiled into assembly dispatch logic with event constants, state IDs, and jump-table handlers for each transition.
 - **Customized data sections** — `.data` section content can be defined in Markdown tables and ini file (`.data.md` files) using the `md_data` module.
 - **Dynamic / shared-library support** — PLT stubs (plt0 / pltn) and ELF dynamic structures are generated for shared-library builds.
 - **External symbol support** — symbols referenced but not defined in the current translation unit are forwarded as external relocations.
@@ -67,6 +69,30 @@ The assembler supports the following extension families (instruction names are d
 
 - This library accepts a practical subset used by the project and does not claim full ratified coverage of every optional RISC-V extension variant.
 - Extension support is best validated by checking `src/r5asm/r5asm.pest` and `src/r5asm/opcode/opcode.rs` together.
+
+### Mermaid state-machine code generation
+
+The assembler includes a small code-generation path for Mermaid state diagrams. A diagram such as:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Running: start
+    Running --> Idle: stop
+    Running --> Fault: error
+    Fault --> Idle: reset
+```
+
+is translated into assembly that emits:
+
+- `EVENT_*` constants for each trigger event
+- `STATE_*` constants for each state value
+- a state jump table in `.data`
+- a dispatcher in `.text` that selects the current state handler and jumps to the matching transition block
+
+The generated logic follows the same pattern as the state-machine templates in `src/templates/state_machine.template` and `src/templates/state_machine_event.template`: the machine keeps a current state ID in a register, compares the incoming event against the state's transition list, updates the next state, and dispatches to the next handler.
+
+This is useful for encoding workflow logic directly from a visual state diagram instead of hand-writing a large nested `if`/`switch` sequence in assembly.
 
 ### Pseudo-instruction note: `li rd, <imm>`
 
@@ -129,6 +155,8 @@ riscv_asm_lib/
         ├── build_snippet_parameters.rs
         ├── basic_instruction_extensions.rs
         ├── md_data.rs          # Markdown table → .data section converter
+        ├── state_machine_code.rs # Mermaid state graph → assembly dispatcher codegen
+        ├── templates/          # state machine code templates
         └── traits/             # Shared traits (SectionSizeTrait, ToMarkdown, …)
 ```
 
