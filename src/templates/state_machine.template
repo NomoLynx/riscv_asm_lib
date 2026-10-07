@@ -11,6 +11,11 @@
 {% for state in states %}{{state}}
 {% endfor %}
 
+state_table:
+
+{% for state_fn in state_fns %}   {{state_fn}}
+{% endfor %}
+
 .text
 state_machine:
 
@@ -35,9 +40,3 @@ dispatch:
 
     lw   t2, 0(t1)           # load handler address
     jr   t2                  # jump to state handler
-
-.data
-state_table:
-
-{% for state_fn in state_fns %}   {{state_fn}}
-{% endfor %}
