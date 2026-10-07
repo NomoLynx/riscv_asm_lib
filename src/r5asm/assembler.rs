@@ -377,7 +377,9 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
                 }
                 Some(MermaidType::State(state)) => {
                     let data = from_state1_to_asm(&state)?;
-                    debug_string(data);
+                    debug_string(format!("Generated ASM from state: \n{}", &data));
+                    let mut part1 = parse_asm(&data, config)?;
+                    part0.merge(&mut part1);
                 }
                 _ => {}
             }

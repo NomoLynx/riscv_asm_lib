@@ -19,13 +19,13 @@ pub fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmE
     let event = state_graph.get_all_events()
                                                     .iter()
                                                     .enumerate()
-                                                    .map(|(i, e)| format!(".equ {event_prefix}{e} = {i}"))
+                                                    .map(|(i, e)| format!(".equ {event_prefix}{e}, {i}"))
                                                     .collect::<Vec<_>>();
 
     let state = state_graph.get_all_states()
                                                     .iter()
                                                     .enumerate()
-                                                    .map(|(i, s)| format!(".equ {state_prefix}{s} = {i}"))
+                                                    .map(|(i, s)| format!(".equ {state_prefix}{s}, {i}"))
                                                     .collect::<Vec<_>>();
 
     let state_fn = state_graph.get_all_states()
