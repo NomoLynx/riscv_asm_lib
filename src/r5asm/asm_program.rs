@@ -533,8 +533,9 @@ impl AsmProgram {
     pub (crate) fn link_to_bin(&mut self, file_path:&str, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
         let data = self.generate_binary(config)?;
 
+        let err_msg = format!("cannot write to file {}", file_path);
         std::fs::write(file_path, data)
-                .map_err(|_| { AsmError::GeneralError((file!(), line!()).into(), format!("cannot write to file")) })
+                .map_err(|_| { AsmError::GeneralError((file!(), line!()).into(), err_msg) })
     }
 
     /// update the virtual address for all incs in the text section, 

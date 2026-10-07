@@ -38,5 +38,5 @@ dispatch:
     la   t1, state_table
     add  t1, t1, t0
 
-    lw   t2, 0(t1)           # load handler address
+    lwu   t2, 0(t1)           # load handler address
     jr   t2                  # jump to state handler

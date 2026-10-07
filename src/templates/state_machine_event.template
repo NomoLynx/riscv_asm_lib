@@ -9,8 +9,8 @@
 
 {{current_state_name}}:
 
-    lw   t0, 0(a0)
     call {{process_current_state_name}}
+    lw   t0, 0(a0)
 
 {% for transition in transitions %}
     {{transition}}
