@@ -33,15 +33,13 @@ pub fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmE
                                                     .map(|s| format!(".word {state_prefix}{s}"))
                                                     .collect::<Vec<_>>();
 
-    let mut result = template.render(context! {
-        events => event,
-        states => state,
-        state_fns => state_fn,
-    }).unwrap();
-
+    let mut result = String::new();
+    let mut s0 = String::new();
+    
     for state in state_graph.get_all_states() {
-        
         let state_code = StateMachineStateCode::new_from_state_diagram(state_graph, &state);
+        
+        s0 = state_code.get_state_register().to_string();
         let current_state_name = format!("{}{}", state_code.get_state_prefix(), state);
         let transitions = state_code.to_transitions();
         let states = state_code.to_states();
@@ -63,10 +61,21 @@ pub fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmE
             states => states,
         }).unwrap();
 
+        
+
         result.push_str(&result_state);
     }
 
-    Ok(result)
+    let data = template.render(context! {
+        s0 => s0,
+        events => event,
+        states => state,
+        state_fns => state_fn,
+    }).unwrap();
+
+    let final_result = format!("{data}\n{result}");
+
+    Ok(final_result)
 }
 
 #[derive(Accessors)]
@@ -75,6 +84,8 @@ pub struct StateMachineStateCode {
     target_event_state : HashMap<String, String>,
     state_prefix : String,
     event_prefix : String,
+
+    state_register : String,  //default value is s0
 }
 
 impl StateMachineStateCode {
@@ -84,6 +95,7 @@ impl StateMachineStateCode {
             target_event_state : target_event_states,
             state_prefix : "STATE_".to_string(),
             event_prefix : "EVENT_".to_string(),
+            state_register : "s0".to_string(),
         }
     }
 
@@ -121,7 +133,8 @@ impl StateMachineStateCode {
         for (event, target_state) in self.get_target_event_state() {
             let current_state_event = self.get_current_state_event_name(event);
             let target_state_name = format!("{}{}", self.get_state_prefix(), target_state);
-            let code = format!("{current_state_event}:\n\tli s0, {target_state_name}\n\tj dispatch");
+            let s0 = self.get_state_register();
+            let code = format!("{current_state_event}:\n\tli {s0}, {target_state_name}\n\tj dispatch");
             result.push(code);
         }
 

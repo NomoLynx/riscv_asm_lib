@@ -33,7 +33,7 @@ state_machine:
 
 dispatch:
 
-    slli t0, s0, 2          # state * sizeof(address)
+    slli t0, {{s0}}, 2          # state * sizeof(address)
 
     la   t1, state_table
     add  t1, t1, t0
