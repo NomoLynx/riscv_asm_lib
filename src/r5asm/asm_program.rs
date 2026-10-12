@@ -72,6 +72,46 @@ impl AsmProgram {
         })
     }
 
+    pub (crate) fn validate_section_semantics(&self) -> Result<(), AsmError> {
+        for section in &self.sections {
+            match section.get_section_type() {
+                SectionType::Data | SectionType::Readonlydata | SectionType::Bss => {
+                    for item in section.get_all_items() {
+                        if let SectionItem::Instruction(instruction) = item.get_item() {
+                            return Err(AsmError::GeneralError(
+                                (file!(), line!()).into(),
+                                format!(
+                                    "instruction '{}' is not allowed in {} section",
+                                    instruction.get_instruction_name(),
+                                    section.get_section_type().generate_code_string()
+                                ),
+                            ));
+                        }
+                    }
+                }
+                SectionType::Text => {
+                    for item in section.get_all_items() {
+                        if let SectionItem::Directive(directive) = item.get_item() {
+                            if directive.is_data_definition_directive() {
+                                return Err(AsmError::GeneralError(
+                                    (file!(), line!()).into(),
+                                    format!(
+                                        "data directive '{}' is not allowed in {} section",
+                                        directive.get_name().generate_code_string(),
+                                        section.get_section_type().generate_code_string()
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
+
     fn contains_external_symbol(&self) -> bool {
         self.sections.iter()
             .any(|x| x.contains_external_symbol())
@@ -1404,5 +1444,39 @@ impl AsmProgram {
 
             assert!(data_bytes.len() >= 4, "data section should contain at least one .word");
             assert_eq!(&data_bytes[0..4], &42u32.to_le_bytes());
+        }
+
+        #[test]
+        fn parse_asm_rejects_instruction_inside_rodata_section() {
+            let mut config = CodeGenConfiguration::default();
+            let input = ".rodata\naddi x1, x2, 1\n";
+
+            let result = crate::r5asm::assembler::parse_asm(input, &mut config);
+            assert!(result.is_err(), "instruction in .rodata should fail semantic validation");
+
+            match result {
+                Err(AsmError::GeneralError(_, msg)) => {
+                    assert!(msg.contains("not allowed in .rodata section"), "unexpected error message: {msg}");
+                }
+                Err(other) => panic!("unexpected error type: {other:?}"),
+                Ok(_) => panic!("expected semantic error for instruction in .rodata"),
+            }
+        }
+
+        #[test]
+        fn parse_asm_rejects_instruction_inside_bss_section() {
+            let mut config = CodeGenConfiguration::default();
+            let input = ".bss\naddi x1, x2, 1\n";
+
+            let result = crate::r5asm::assembler::parse_asm(input, &mut config);
+            assert!(result.is_err(), "instruction in .bss should fail semantic validation");
+
+            match result {
+                Err(AsmError::GeneralError(_, msg)) => {
+                    assert!(msg.contains("not allowed in .bss section"), "unexpected error message: {msg}");
+                }
+                Err(other) => panic!("unexpected error type: {other:?}"),
+                Ok(_) => panic!("expected semantic error for instruction in .bss"),
+            }
         }
     }

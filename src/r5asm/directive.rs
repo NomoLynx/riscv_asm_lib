@@ -500,6 +500,33 @@ impl Directive {
         &self.inc_name
     }
 
+    /// true when the directive defines raw data bytes and should stay in data-like sections.
+    pub fn is_data_definition_directive(&self) -> bool {
+        matches!(
+            self.inc_name,
+            DirectiveName::String
+                | DirectiveName::ASCIIZ
+                | DirectiveName::Byte
+                | DirectiveName::TwoByte
+                | DirectiveName::FourByte
+                | DirectiveName::EightByte
+                | DirectiveName::Short
+                | DirectiveName::Long
+                | DirectiveName::Quad
+                | DirectiveName::Half
+                | DirectiveName::Float
+                | DirectiveName::Double
+                | DirectiveName::DWord
+                | DirectiveName::Word
+                | DirectiveName::DtpRelWord
+                | DirectiveName::DtpRelDWorld
+                | DirectiveName::SLEB128
+                | DirectiveName::ULEB128
+                | DirectiveName::Zero
+                | DirectiveName::Space
+        )
+    }
+
     /// check if it is extern directive
     pub fn is_extern(&self) -> bool {
         self.inc_name == DirectiveName::Extern

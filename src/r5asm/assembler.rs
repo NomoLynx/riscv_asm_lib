@@ -63,6 +63,7 @@ pub fn parse_asm(input:&str, config:&mut CodeGenConfiguration) -> Result<AsmProg
         }
         else { 
             let prog = prog_r.unwrap();
+            prog.validate_section_semantics()?;
             Ok(prog)
         }
     }
@@ -454,6 +455,40 @@ mod tests {
         assert_eq!(config.get_linker_config().get_virutual_address_start(), 0x8100_0000);
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn parse_asm_rejects_instruction_inside_data_section() {
+        let mut config = CodeGenConfiguration::default();
+        let input = ".data\naddi x1, x2, 1\n";
+
+        let result = parse_asm(input, &mut config);
+        assert!(result.is_err(), "instruction in .data should fail semantic validation");
+
+        match result {
+            Err(AsmError::GeneralError(_, msg)) => {
+                assert!(msg.contains("not allowed in .data section"), "unexpected error message: {msg}");
+            }
+            Err(other) => panic!("unexpected error type: {other:?}"),
+            Ok(_) => panic!("expected semantic error for instruction in .data"),
+        }
+    }
+
+    #[test]
+    fn parse_asm_rejects_data_directive_inside_text_section() {
+        let mut config = CodeGenConfiguration::default();
+        let input = ".text\n.word 1\n";
+
+        let result = parse_asm(input, &mut config);
+        assert!(result.is_err(), "data directive in .text should fail semantic validation");
+
+        match result {
+            Err(AsmError::GeneralError(_, msg)) => {
+                assert!(msg.contains("not allowed in .text section"), "unexpected error message: {msg}");
+            }
+            Err(other) => panic!("unexpected error type: {other:?}"),
+            Ok(_) => panic!("expected semantic error for .word in .text"),
+        }
     }
 }
 
