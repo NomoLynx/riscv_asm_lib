@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::{Display, Formatter}};
 
 pub use core_utils::file_object::FileObject;
+use super::linker_config::LinkerConfig;
 
 pub struct ASMSolution {
     container_path: Option<String>,
@@ -80,18 +81,30 @@ impl ASMSolution {
     }
 
     pub fn get_output_file_name(&self) -> String {
+        self.get_output_file_name_with_extension("elf")
+    }
+
+    pub fn get_output_file_name_with_linker_config(&self, linker_config:&LinkerConfig) -> String {
+        if linker_config.get_is_build_lib() {
+            self.get_output_file_name_with_extension("so")
+        } else {
+            self.get_output_file_name_with_extension("elf")
+        }
+    }
+
+    fn get_output_file_name_with_extension(&self, extension:&str) -> String {
         match (self.container_path.as_ref(), self.output_folder.as_ref()) {
             (Some(container_path), Some(output_folder)) => {
-                return format!("{}/{}/{}.elf", container_path, output_folder, self.main_file.get_file_name());
+                return format!("{}/{}/{}.{}", container_path, output_folder, self.main_file.get_file_name(), extension);
             }
             (Some(container_path), None) => {
-                return format!("{}/{}.elf", container_path, self.main_file.get_file_name());
+                return format!("{}/{}.{}", container_path, self.main_file.get_file_name(), extension);
             }
             (None, Some(output_folder)) => {
-                return format!("{}/{}.elf", output_folder, self.main_file.get_file_name());
+                return format!("{}/{}.{}", output_folder, self.main_file.get_file_name(), extension);
             }
             (None, None) => {
-                return format!("{}.elf", self.main_file.get_file_name());
+                return format!("{}.{}", self.main_file.get_file_name(), extension);
             }
         }
     }
@@ -217,6 +230,7 @@ impl Display for ASMSolution {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::r5asm::linker_config::LinkerConfig;
 
     #[test]
     fn asm_solution_tracks_multiple_source_files() {
@@ -227,5 +241,14 @@ mod tests {
         assert_eq!(solution.get_source_files().len(), 2);
         assert!(solution.get_combined_source().contains("addi x1, x2, 1"));
         assert!(solution.get_combined_source().contains("addi x3, x4, 2"));
+    }
+
+    #[test]
+    fn asm_solution_outputs_shared_library_name_when_linker_is_library_mode() {
+        let solution = ASMSolution::new(FileObject::new("main", "s", ".text\nret\n"));
+        let mut linker_config = LinkerConfig::default();
+        linker_config.set_is_build_lib(true);
+
+        assert_eq!(solution.get_output_file_name_with_linker_config(&linker_config), "main.so");
     }
 }

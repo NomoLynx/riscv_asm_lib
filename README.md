@@ -240,6 +240,11 @@ The INI-based build entry points are:
 - `build_asm_solution_from_ini(ini_file_path)`
 - `build_asm_from_ini(ini_file_path, output_file_name)`
 
+Output naming follows linker mode:
+
+- `is_build_lib = false` → `<main>.elf`
+- `is_build_lib = true` → `<main>.so`
+
 The older direct build path remains:
 
 - `build_asm(file_path, output_file_name, config)`
@@ -282,6 +287,8 @@ Controls the entire assembly pipeline:
 | `virutual_address_start` | `0x8100_0000` | Base virtual address for the executable |
 | `is_build_lib` | `false` | Build as shared library instead of executable |
 | `soname` | `None` | SONAME for the shared object |
+
+When `is_build_lib` is enabled, dynamic ELF output uses a shared-library style entry (`e_entry = 0`) and emits a `.so` file name by default.
 
 ### `AsmError`
 
@@ -342,4 +349,3 @@ Data section content can be described in Markdown tables inside a `.data.md` fil
 ## License
 
 See the repository root for license information.
-

@@ -868,9 +868,14 @@ impl AsmProgram {
         // conslidate all data into byte vec
         let mut elf_file = ElfFile::new();
         let mut section_structure = ElfSectionStructure::default();
+        let linker_config = config.get_linker_config();
 
         elf_file.set_to_dynamic();
-        elf_file.set_entry_point(self.get_entry_address2()? as u64);
+        if linker_config.get_is_build_lib() {
+            elf_file.set_entry_point(0);
+        } else {
+            elf_file.set_entry_point(self.get_entry_address2()? as u64);
+        }
         let text_segment = & segment_headers[SectionType::Text];
         let data_segment = & segment_headers[SectionType::Data];
         let bss_segment = & segment_headers[SectionType::Bss];

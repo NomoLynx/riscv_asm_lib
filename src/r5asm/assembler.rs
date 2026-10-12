@@ -262,18 +262,19 @@ pub fn load_asm_solution_from_ini(ini_file_path: &str) -> Result<(ASMSolution, C
 
 /// build asm solution which contains one or more source files plus optional data files
 pub fn build_asm_solution(asm_solution:&ASMSolution, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
+    let output_file_name = asm_solution.get_output_file_name_with_linker_config(config.get_linker_config());
     if asm_solution.has_multiple_source_files() {
         let input = asm_solution.get_combined_source();
         let mut ast = parse_asm(&input, config)?;
         ast.second_round(config)?;
         ast.third_round()?;
-        ast.link_to_bin(&asm_solution.get_output_file_name(), config)?;
+        ast.link_to_bin(&output_file_name, config)?;
     }
     else {
-        build_asm(&asm_solution.get_main_file_name(), &asm_solution.get_output_file_name(), config)?;
+        build_asm(&asm_solution.get_main_file_name(), &output_file_name, config)?;
     }
 
-    output_string(format!("built asm file: {}", &asm_solution.get_output_file_name()));
+    output_string(format!("built asm file: {}", &output_file_name));
     Ok(())
 }
 
@@ -288,7 +289,7 @@ pub fn build_asm_from_ini(ini_file_path:&str, output_file_name:&str) -> Result<(
     let (solution, mut config) = load_asm_solution_from_ini(ini_file_path)?;
     build_asm_solution(&solution, &mut config)?;
 
-    let generated_output = solution.get_output_file_name();
+    let generated_output = solution.get_output_file_name_with_linker_config(config.get_linker_config());
     if !output_file_name.is_empty() && generated_output != output_file_name {
         std::fs::copy(&generated_output, output_file_name).map_err(|e| {
             AsmError::GeneralError(
