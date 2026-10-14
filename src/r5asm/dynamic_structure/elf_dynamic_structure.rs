@@ -137,16 +137,24 @@ impl ELFDynamicStructure {
     pub fn insert_external_function(&mut self, symbol_name:&str, config:&super::super::code_gen_config::CodeGenConfiguration) {
         let mapping = config.get_external_function_versions();
         if let Some((file, versions)) = mapping.find_version(symbol_name) {
-            let strs = std::iter::once(file.clone()).chain(versions.clone()).collect::<Vec<_>>();
-            let offsets = strs.iter().map(|s| (self.insert_string(s) as u32, vna_hash(s))).collect();            
-            if let Some(version_index) = self.gnu_version_required_section.find_offset(&offsets) {
-                self.gnu_version_section.add_entry(version_index); // add version entry for this symbol
+            if versions.is_empty() {
+                // no version means the version is undefined
+                todo!("External function '{}' has no version defined", symbol_name);
             }
             else {
-                self.gnu_version_required_section.add_new_version(offsets);
-                let last_header = self.gnu_version_required_section.get_headers().last().unwrap();
-                let version_index = last_header.get_max_version_index().unwrap();
-                self.gnu_version_section.add_entry(version_index); // add version entry for this symbol
+                let strs = std::iter::once(file.clone())
+                            .chain(versions.clone())
+                            .collect::<Vec<_>>();
+                let offsets = strs.iter().map(|s| (self.insert_string(s) as u32, vna_hash(s))).collect();            
+                if let Some(version_index) = self.gnu_version_required_section.find_offset(&offsets) {
+                    self.gnu_version_section.add_entry(version_index); // add version entry for this symbol
+                }
+                else {
+                    self.gnu_version_required_section.add_new_version(offsets);
+                    let last_header = self.gnu_version_required_section.get_headers().last().unwrap();
+                    let version_index = last_header.get_max_version_index().unwrap();
+                    self.gnu_version_section.add_entry(version_index); // add version entry for this symbol
+                }
             }
         }
         else {
@@ -206,6 +214,13 @@ impl ELFDynamicStructure {
         let external_symbols = asm_prog.get_external_symbols();
         for symbol in external_symbols {
             self.insert_external_function(symbol.get_name(), config);
+        }
+    }
+
+    /// insert all user-requested needed libraries from linker config
+    pub fn insert_required_libs_from_linker_config(&mut self, linker_config:&LinkerConfig) {
+        for lib in linker_config.get_needed_libs() {
+            self.insert_required_lib(lib);
         }
     }
 

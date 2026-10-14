@@ -527,7 +527,7 @@ impl Directive {
         )
     }
 
-    /// check if it is extern directive
+    /// check if it is .extern directive
     pub fn is_extern(&self) -> bool {
         self.inc_name == DirectiveName::Extern
     }
@@ -540,6 +540,7 @@ impl Directive {
         }
     }
 
+    /// get global label name, e.g. for .globl directive
     pub fn get_global_label(&self) -> Option<&String> {
         if self.inc_name == DirectiveName::Globl {
             Some(self.parameters.iter().nth(0).unwrap())
@@ -557,7 +558,7 @@ impl Directive {
         }
     }
 
-    /// get external label name
+    /// get external label name, e.g. for .extern directive
     pub fn get_extern_label(&self) -> Option<&String> {
         if self.is_extern() {
             Some(self.parameters.iter().nth(0).unwrap())

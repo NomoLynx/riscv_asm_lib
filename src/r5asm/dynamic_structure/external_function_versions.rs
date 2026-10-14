@@ -25,7 +25,7 @@ fn md_table_to_string_row_table(file_name: &str) -> Result<StringValueTable, par
     Ok(StringValueTable::new(rows))
 }
 
-pub type VersionEntry = (String, String, String); // (function name, library file name, version)
+pub type VersionEntry = (String, String, Option<String>); // (function name, library file name, version)
 
 #[derive(Debug, Clone)]
 pub struct ExternalFunctionVersions {
@@ -34,11 +34,13 @@ pub struct ExternalFunctionVersions {
 
 impl ExternalFunctionVersions {
     pub fn find_version(&self, function_name: &str) -> Option<(String, Vec<String>)> {
-        let mut results: Vec<String> = Vec::new();
+        let mut results = Vec::new();
         let mut lib_name = String::new();
         for (func, lib, ver) in &self.values {
             if func == function_name {
-                results.push(ver.to_string());
+                if ver.is_some() {
+                    results.push(ver.clone().unwrap());
+                }
 
                 if lib_name.is_empty() {
                     lib_name = lib.to_string();
@@ -109,7 +111,7 @@ impl From<&StringValueTable> for ExternalFunctionVersions {
                 let function_name = row[0].clone();
                 let library_name = row[1].clone();
                 let version = row[2].clone();
-                values.push((function_name, library_name, version));
+                values.push((function_name, library_name, Some(version)));
             }
         }
         ExternalFunctionVersions { values }

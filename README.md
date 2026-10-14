@@ -231,6 +231,7 @@ build_target = 8
 virtual_address_start = 0x81000000
 is_build_lib = false
 soname = firmware
+needed_libs = libxyz.so, libfoo.so
 ```
 
 This file can live in the same folder as the `.s` files. Relative paths are resolved relative to the INI file itself, so a project can be built by pointing at the folder-level INI instead of passing a single main file directly.
@@ -287,6 +288,7 @@ Controls the entire assembly pipeline:
 | `virutual_address_start` | `0x8100_0000` | Base virtual address for the executable |
 | `is_build_lib` | `false` | Build as shared library instead of executable |
 | `soname` | `None` | SONAME for the shared object |
+| `needed_libs` | empty | Extra `DT_NEEDED` libraries (comma-separated in INI) |
 
 When `is_build_lib` is enabled, dynamic ELF output uses a shared-library style entry (`e_entry = 0`) and emits a `.so` file name by default.
 

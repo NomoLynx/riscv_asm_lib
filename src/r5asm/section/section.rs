@@ -242,11 +242,13 @@ impl Section {
             .collect::<Vec<_>>()
     }
 
+    /// Check if the section contains any external symbols.
     pub fn contains_external_symbol(&self) -> bool {
         self.section_items.iter()
             .any(|x| x.get_external_label().is_some())
     }
 
+    /// Check if the section contains any global directives.
     pub fn contains_global_directive(&self) -> bool {
         self.section_items.iter()
             .any(|x| x.get_global_label().is_some())

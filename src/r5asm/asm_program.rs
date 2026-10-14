@@ -112,11 +112,13 @@ impl AsmProgram {
         Ok(())
     }
 
+    /// Check if the assembly program contains any external symbols.
     fn contains_external_symbol(&self) -> bool {
         self.sections.iter()
             .any(|x| x.contains_external_symbol())
     }
 
+    /// Check if the assembly program contains any global directives.
     fn contains_global_directive(&self) -> bool {
         self.sections.iter()
             .any(|x| x.contains_global_directive())
@@ -977,6 +979,7 @@ impl AsmProgram {
 
     fn generate_binary_with_dynamic_structure(&mut self, config:&mut CodeGenConfiguration) -> Result<Vec<u8>, AsmError> {
         let mut dynamic_structure = ELFDynamicStructure::default();
+        dynamic_structure.insert_required_libs_from_linker_config(config.get_linker_config());
         dynamic_structure.insert_external_functions(self, config);
         dynamic_structure.add_global_functions(self);
         dynamic_structure.create_hash_section();

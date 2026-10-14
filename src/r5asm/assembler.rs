@@ -257,6 +257,10 @@ pub fn load_asm_solution_from_ini(ini_file_path: &str) -> Result<(ASMSolution, C
         config.get_linker_config_mut().set_soname(Some(value.trim().to_string()));
     }
 
+    if let Some(value) = properties.get("needed_libs").or_else(|| properties.get("linker_needed_libs")) {
+        config.get_linker_config_mut().set_needed_libraries_from_csv(value);
+    }
+
     Ok((solution, config))
 }
 
@@ -444,7 +448,7 @@ mod tests {
         std::fs::write(&helper_path, ".text\naddi x3, x4, 2\n").unwrap();
 
         let ini = format!(
-            "[asm]\nmain = main.s\nsource = helper.s\n\n[linker]\nvirtual_address_start = 0x81000000\n\n[codegen]\nreplace_pseudo_code = true\ngenerate_bin_and_code = false\nbuild_target = 8\n"
+            "[asm]\nmain = main.s\nsource = helper.s\n\n[linker]\nvirtual_address_start = 0x81000000\nneeded_libs = libxyz.so, libfoo.so\n\n[codegen]\nreplace_pseudo_code = true\ngenerate_bin_and_code = false\nbuild_target = 8\n"
         );
         std::fs::write(&ini_path, ini).unwrap();
 
@@ -454,6 +458,7 @@ mod tests {
         assert!(solution.get_combined_source().contains("addi x1, x2, 1"));
         assert!(solution.get_combined_source().contains("addi x3, x4, 2"));
         assert_eq!(config.get_linker_config().get_virutual_address_start(), 0x8100_0000);
+        assert_eq!(config.get_linker_config().get_needed_libs(), &vec!["libxyz.so".to_string(), "libfoo.so".to_string()]);
 
         let _ = std::fs::remove_dir_all(&dir);
     }
