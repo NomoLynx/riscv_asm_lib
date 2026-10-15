@@ -257,8 +257,9 @@ pub fn load_asm_solution_from_ini(ini_file_path: &str) -> Result<(ASMSolution, C
         config.get_linker_config_mut().set_soname(Some(value.trim().to_string()));
     }
 
-    if let Some(value) = properties.get("needed_libs").or_else(|| properties.get("linker_needed_libs")) {
+    if let Some(value) = properties.get("asm_needed_libs").or_else(|| properties.get("asm_linker_needed_libs")) {
         config.get_linker_config_mut().set_needed_libraries_from_csv(value);
+        config.get_linker_config_mut().process_exteranl_function(&ini_base_folder);
     }
 
     Ok((solution, config))

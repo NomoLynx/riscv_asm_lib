@@ -135,11 +135,15 @@ impl ELFDynamicStructure {
 
     /// Insert an external function symbol with GNU version info and PLT/GOT relocation entries.
     pub fn insert_external_function(&mut self, symbol_name:&str, config:&super::super::code_gen_config::CodeGenConfiguration) {
-        let mapping = config.get_external_function_versions();
+        let mapping = config.get_all_external_function_versions();
         if let Some((file, versions)) = mapping.find_version(symbol_name) {
             if versions.is_empty() {
-                // no version means the version is undefined
-                todo!("External function '{}' has no version defined", symbol_name);
+                let strs = vec![file.clone()];
+                let _offsets = strs.iter()
+                                .map(|s| (self.insert_string(s) as u32, vna_hash(s)))
+                                .collect::<Vec<_>>();            
+
+                self.gnu_version_section.add_entry(1);  //1 is the undefined version
             }
             else {
                 let strs = std::iter::once(file.clone())

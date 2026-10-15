@@ -1,11 +1,44 @@
+use std::path::PathBuf;
+
 use rust_macro::*;
 
+use crate::r5asm::dynamic_structure::ExternalFunctionVersions;
+
 #[derive(Debug, Clone, Accessors)]
+pub struct ExternalFileFunctions {
+    file_name : String, 
+    external_functions : ExternalFunctionVersions
+}
+
+impl From<&PathBuf> for ExternalFileFunctions {
+    fn from(value: &PathBuf) -> Self {
+        let file_name = value.file_name()
+                                            .and_then(|x| x.to_str())
+                                            .unwrap_or("");
+        let mut lvalue = value.clone();
+        lvalue.set_extension("lnk");
+        let external_functions = lvalue.into();
+
+        Self {
+            file_name: file_name.to_string(),
+            external_functions,
+        }        
+    }
+}
+
+impl From<PathBuf> for ExternalFileFunctions {
+    fn from(value: PathBuf) -> Self {
+        Self::from(&value)
+    }
+}
+
+#[derive(Debug, Clone, Accessors, GetMut)]
 pub struct LinkerConfig {
     virutual_address_start: u64,
     is_build_lib : bool,
     soname : Option<String>,
     needed_libs: Vec<String>,
+    external_file_functions : Vec<ExternalFileFunctions>,
 }
 
 impl LinkerConfig {
@@ -32,6 +65,23 @@ impl LinkerConfig {
             self.add_needed_lib(lib);
         }
     }
+
+    /// Processes external functions for all needed libraries.
+    /// 
+    /// # Arguments
+    ///
+    /// * `base_path` - The base path where the external library files are located.
+    pub fn process_exteranl_function(&mut self, base_path:&PathBuf) {
+        let mut external_file_functions = vec![];
+        for file in self.get_needed_libs() {
+            let mut base_path_clone = base_path.clone();
+            base_path_clone.push(file);
+            let v = base_path_clone.into();
+            external_file_functions.push(v);
+        }
+
+        self.set_external_file_functions(external_file_functions);
+    }
 }
 
 impl Default for LinkerConfig {
@@ -41,6 +91,7 @@ impl Default for LinkerConfig {
             is_build_lib : false,
             soname : None,
             needed_libs : Vec::default(),
+            external_file_functions : Vec::default(),
         }
     }
 }

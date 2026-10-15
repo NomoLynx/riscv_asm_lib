@@ -1,4 +1,6 @@
+use core_utils::debug::*;
 use parser_lib::markdown_lang::*;
+use std::path::PathBuf;
 
 fn md_table_to_string_row_table(file_name: &str) -> Result<StringValueTable, parser_lib::common::ParsingError> {
     let md_file = load_md_file(file_name)?;
@@ -33,6 +35,16 @@ pub struct ExternalFunctionVersions {
 }
 
 impl ExternalFunctionVersions {
+    pub fn new() -> Self {
+        Self { values: Vec::new() }
+    }
+
+    pub fn merge(&mut self, other: &Self) {
+        for entry in &other.values {
+            self.values.push(entry.clone());
+        }
+    }
+
     pub fn find_version(&self, function_name: &str) -> Option<(String, Vec<String>)> {
         let mut results = Vec::new();
         let mut lib_name = String::new();
@@ -95,11 +107,30 @@ impl Default for ExternalFunctionVersions {
         let string_value_table = md_table_to_string_row_table(&manifest_path)
             .or_else(|_| md_table_to_string_row_table("r5asm_data/external_linux_functions.md"))
             .unwrap_or_else(|err| {
-                eprintln!("warning: failed to load external function versions: {err:?}");
+                error_string(format!("warning: failed to load external function versions: {err:?}"));
                 StringValueTable::new(Vec::new())
             });
 
         string_value_table.into()
+    }
+}
+
+impl From<&PathBuf> for ExternalFunctionVersions {
+    fn from(value: &PathBuf) -> Self {
+        let manifest_path = value.to_string_lossy().to_string();
+        let string_value_table = md_table_to_string_row_table(&manifest_path)
+            .unwrap_or_else(|err| {
+                error_string(format!("warning: failed to load external function versions: {err:?}"));
+                StringValueTable::new(Vec::new())
+            });
+
+        string_value_table.into()
+    }
+}
+
+impl From<PathBuf> for ExternalFunctionVersions {
+    fn from(value: PathBuf) -> Self {
+        (&value).into()
     }
 }
 
@@ -110,8 +141,9 @@ impl From<&StringValueTable> for ExternalFunctionVersions {
             if row.len() >= 3 {
                 let function_name = row[0].clone();
                 let library_name = row[1].clone();
-                let version = row[2].clone();
-                values.push((function_name, library_name, Some(version)));
+                let version = if row[2].trim().is_empty() { None } 
+                                              else { Some(row[2].trim().to_string()) };
+                values.push((function_name, library_name, version));
             }
         }
         ExternalFunctionVersions { values }

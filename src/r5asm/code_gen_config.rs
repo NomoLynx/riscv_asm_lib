@@ -42,6 +42,22 @@ impl CodeGenConfiguration {
         &mut self.linker_config
     }
 
+    /// Get all external function versions, including those from the configuration 
+    /// and the linker config.
+    pub fn get_all_external_function_versions(&self) -> ExternalFunctionVersions {
+        let mut result = ExternalFunctionVersions::new();
+        
+        // items from config
+        result.merge(self.get_external_function_versions());
+
+        // items from linker config
+        for item in self.get_linker_config().get_external_file_functions() {
+            result.merge(item.get_external_functions())
+        }
+
+        result
+    }
+
 }
 
 impl Default for CodeGenConfiguration {
