@@ -240,6 +240,12 @@ impl GnuVersionRequiredSection {
             assert!(header.cnt as usize == header.required_entries.len())
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.validate();
+
+        self.get_headers().is_empty()
+    }
 }
 
 impl Default for GnuVersionRequiredSection {

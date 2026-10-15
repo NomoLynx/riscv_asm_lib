@@ -984,6 +984,8 @@ impl AsmProgram {
         dynamic_structure.add_global_functions(self);
         dynamic_structure.create_hash_section();
 
+        dynamic_structure.remove_unused_structures();
+
         let segment_headers = self.generate_dynamic_program_headers(config, &mut dynamic_structure)?;
         self.update_label_virtual_address(Some(&dynamic_structure))?;
         self.refresh_label_tables();

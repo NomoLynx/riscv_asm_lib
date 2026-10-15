@@ -11,6 +11,7 @@ use super::super::elf_file::code_section::CodeSection;
 
 use super::elf_string_table::ELFStringTable;
 use core_utils::string::vna_hash;
+use rust_macro::{Accessors, GetMut};
 use core::panic;
 use std::fmt::{self, Debug, Formatter};
 
@@ -20,7 +21,7 @@ pub const DT_RELA: u64 = 7;           // Address of relocation entries with adde
 const SHN_ABS: u16 = 0xFFF1;
 
 /// elf dynamic structure representation, it has many structure related to dynamic linking
-#[derive(Clone)]
+#[derive(Clone, GetMut, Accessors)]
 pub struct DynamicSection {
     virtual_address: u64,           // virtual address of dynamic section
     offset: u64,
@@ -673,6 +674,15 @@ impl ELFDynamicStructure {
         self.plt_relocation_table.update_jump_slot_offset(got_vadd);
     }
 
+    /// remove unused structures like VERNEED or VERNEEDNUMBER entries
+    pub fn remove_unused_structures(&mut self) {
+        let is_gnu_version_required_empty = self.gnu_version_required_section.is_empty();
+        if is_gnu_version_required_empty {
+            self.dynamic_section.entries.retain(|x| ! x.is_verneed_entry() );
+            self.dynamic_section.entries.retain(|x| ! x.is_verneednum_entry());
+        }
+    }
+
     pub fn to_section_headers(&self) -> Elf64SectionHeaderList {
         let mut headers = Elf64SectionHeaderList::default();
         headers <<= &self.plt_section;
@@ -792,6 +802,14 @@ impl DynamicEntry {
     pub fn tag_to_string(&self) -> String {
         self.d_tag.item_to_string()
             .to_string()
+    }
+
+    pub fn is_verneed_entry(&self) -> bool {
+        self.d_tag == DTTags::DT_VERNEED
+    }
+
+    pub fn is_verneednum_entry(&self) -> bool {
+        self.d_tag == DTTags::DT_VERNEEDNUM
     }
 }
 
