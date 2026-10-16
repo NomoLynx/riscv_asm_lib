@@ -29,6 +29,51 @@ pub struct DynamicSection {
     entries: Vec<DynamicEntry>,     // .dynamic section data
 }
 
+impl DynamicSection {
+    /// insert a dynamic entry, if the entry is null entry, 
+    /// it will only insert if the last entry is not null
+    pub fn insert_entry(&mut self, entry: DynamicEntry) {
+        if entry.is_null_entry() {
+            if !self.is_last_entry_null() {
+                self.entries.push(entry);
+            }
+        }
+        else {
+            if self.is_entry_empty() {
+                self.entries.push(entry);
+            }
+            else {
+                if self.is_last_entry_null() {
+                    // insert before the last null entry
+                    let last_index = self.entries.len() - 1;
+                    self.entries.insert(last_index, entry);
+                }
+                else {
+                    // no null entry at the end, just push to the end
+                    self.entries.push(entry);
+                }
+            }
+        }
+        
+    }
+
+    /// check if the dynamic section has no entries
+    pub fn is_entry_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// check if the last entry is null entry
+    pub fn is_last_entry_null(&self) -> bool {
+        self.entries.last()
+            .map_or(false, |e| e.is_null_entry())
+    }
+
+    /// check if the dynamic section contains a specific entry
+    pub fn contains_entry(&self, d_tag:DTTags) -> bool {
+        self.entries.iter().any(|e| e.d_tag == d_tag)
+    }
+}
+
 impl Default for DynamicSection {
     fn default() -> Self {
         Self {
@@ -104,13 +149,13 @@ impl ELFDynamicStructure {
         }
 
         let offset = self.dynamic_string_table.0.get_string_offset_or_add(required_symbol_or_lib);
-        self.dynamic_section.entries.push(DynamicEntry::new_dt_needed(offset as u64));
+        self.dynamic_section.insert_entry(DynamicEntry::new_dt_needed(offset as u64));
         self.update_string_table_size();
     }
 
     /// add dynamic entry size
     pub fn insert_dynamic_entry_size(&mut self, d_val:u64) {
-        self.dynamic_section.entries.push(DynamicEntry::new(DTTags::DT_SYMENT, d_val));
+        self.dynamic_section.insert_entry(DynamicEntry::new(DTTags::DT_SYMENT, d_val));
     }
 
     /// add or update string table size entry based on dynamic string table
@@ -120,7 +165,7 @@ impl ELFDynamicStructure {
             self.dynamic_section.entries[index] = self.dynamic_string_table.0.to_dynamic_entry_string_table_size();
         } else {
             let entry = self.dynamic_string_table.0.to_dynamic_entry_string_table_size();
-            self.dynamic_section.entries.push(entry);
+            self.dynamic_section.insert_entry(entry);
         }        
     } 
 
@@ -360,17 +405,19 @@ impl ELFDynamicStructure {
                     d_val: self.gnu_version_section.get_virtual_address(),
                 });
 
-                // Version requirements (.gnu.version_r)
-                dynamic_entries.push(DynamicEntry {
-                    d_tag: DTTags::DT_VERNEED,
-                    d_val: self.gnu_version_required_section.get_virtual_address(),
-                });
+                if !self.gnu_version_required_section.is_empty() {
+                    // Version requirements (.gnu.version_r)
+                    dynamic_entries.push(DynamicEntry {
+                        d_tag: DTTags::DT_VERNEED,
+                        d_val: self.gnu_version_required_section.get_virtual_address(),
+                    });
 
-                // version need entries size
-                dynamic_entries.push(DynamicEntry {
-                    d_tag: DTTags::DT_VERNEEDNUM,
-                    d_val: self.gnu_version_required_section.get_headers().len() as u64,
-                });
+                    // version need entries size
+                    dynamic_entries.push(DynamicEntry {
+                        d_tag: DTTags::DT_VERNEEDNUM,
+                        d_val: self.gnu_version_required_section.get_headers().len() as u64,
+                    });
+                }
 
                 // rela.dyn virtual address and size (if 0 means there is no such thing)
                 // dynamic_entries.push(DynamicEntry { d_tag: DT_RELA, d_val: self.plt_relocation_table.get_virtual_address() });
@@ -400,11 +447,12 @@ impl ELFDynamicStructure {
         dynamic_entries.into_iter().for_each(|n| self.update_entry(n));
     }
 
+    /// update a dynamic entry if it exists. NO insert!
     fn update_entry(&mut self, entry: DynamicEntry) {
         if let Some(index) = self.dynamic_section.entries.iter().position(|x| x.d_tag == entry.d_tag) {
             self.dynamic_section.entries[index] = entry;
         } else {
-            self.dynamic_section.entries.push(entry);
+            self.dynamic_section.insert_entry(entry);
         }
     }
 
@@ -681,6 +729,8 @@ impl ELFDynamicStructure {
             self.dynamic_section.entries.retain(|x| ! x.is_verneed_entry() );
             self.dynamic_section.entries.retain(|x| ! x.is_verneednum_entry());
         }
+
+
     }
 
     pub fn to_section_headers(&self) -> Elf64SectionHeaderList {
@@ -810,6 +860,10 @@ impl DynamicEntry {
 
     pub fn is_verneednum_entry(&self) -> bool {
         self.d_tag == DTTags::DT_VERNEEDNUM
+    }
+
+    pub fn is_null_entry(&self) -> bool {
+        self.d_tag == DTTags::DT_NULL
     }
 }
 
