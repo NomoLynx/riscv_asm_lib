@@ -95,13 +95,17 @@ impl ASMSolution {
     fn get_output_file_name_with_extension(&self, extension:&str) -> String {
         match (self.container_path.as_ref(), self.output_folder.as_ref()) {
             (Some(container_path), Some(output_folder)) => {
-                return format!("{}/{}/{}.{}", container_path, output_folder, self.main_file.get_file_name(), extension);
+                let container = container_path.trim_end_matches("/");
+                let output_folder = output_folder.trim_end_matches("/");
+                return format!("{container}/{output_folder}/{}.{}", self.main_file.get_file_name(), extension);
             }
             (Some(container_path), None) => {
-                return format!("{}/{}.{}", container_path, self.main_file.get_file_name(), extension);
+                let container = container_path.trim_end_matches("/");
+                return format!("{container}/{}.{}", self.main_file.get_file_name(), extension);
             }
             (None, Some(output_folder)) => {
-                return format!("{}/{}.{}", output_folder, self.main_file.get_file_name(), extension);
+                let output_folder = output_folder.trim_end_matches("/");
+                return format!("{output_folder}/{}.{}", self.main_file.get_file_name(), extension);
             }
             (None, None) => {
                 return format!("{}.{}", self.main_file.get_file_name(), extension);
