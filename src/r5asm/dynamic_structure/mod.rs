@@ -11,6 +11,7 @@ pub(crate) mod gnu_version_required_section;
 pub(crate) mod external_function_versions;
 pub (crate) mod dynamic_symbol_entry;
 pub (crate) mod dt_tags;
+pub (crate) mod elf_dynamic_section;
 
 pub use elf_dynamic_structure::*;
 pub use elf_string_table::*;
@@ -23,3 +24,4 @@ pub use elf_dynamic_string_table::*;
 pub use self::gnu_version_section::*;
 pub use self::gnu_version_required_section::*;
 pub use self::external_function_versions::*;
+pub use self::elf_dynamic_section::*;

@@ -11,7 +11,7 @@ use super::super::elf_file::code_section::CodeSection;
 
 use super::elf_string_table::ELFStringTable;
 use core_utils::string::vna_hash;
-use rust_macro::{Accessors, GetMut};
+use rust_macro::Accessors;
 use core::panic;
 use std::fmt::{self, Debug, Formatter};
 
@@ -19,71 +19,6 @@ pub const DT_RELA: u64 = 7;           // Address of relocation entries with adde
 
 // ELF special section indices
 const SHN_ABS: u16 = 0xFFF1;
-
-/// elf dynamic structure representation, it has many structure related to dynamic linking
-#[derive(Clone, GetMut, Accessors)]
-pub struct DynamicSection {
-    virtual_address: u64,           // virtual address of dynamic section
-    offset: u64,
-    alignment: Alignment,           // alignment for dynamic entries
-    entries: Vec<DynamicEntry>,     // .dynamic section data
-}
-
-impl DynamicSection {
-    /// insert a dynamic entry, if the entry is null entry, 
-    /// it will only insert if the last entry is not null
-    pub fn insert_entry(&mut self, entry: DynamicEntry) {
-        if entry.is_null_entry() {
-            if !self.is_last_entry_null() {
-                self.entries.push(entry);
-            }
-        }
-        else {
-            if self.is_entry_empty() {
-                self.entries.push(entry);
-            }
-            else {
-                if self.is_last_entry_null() {
-                    // insert before the last null entry
-                    let last_index = self.entries.len() - 1;
-                    self.entries.insert(last_index, entry);
-                }
-                else {
-                    // no null entry at the end, just push to the end
-                    self.entries.push(entry);
-                }
-            }
-        }
-        
-    }
-
-    /// check if the dynamic section has no entries
-    pub fn is_entry_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-
-    /// check if the last entry is null entry
-    pub fn is_last_entry_null(&self) -> bool {
-        self.entries.last()
-            .map_or(false, |e| e.is_null_entry())
-    }
-
-    /// check if the dynamic section contains a specific entry
-    pub fn contains_entry(&self, d_tag:DTTags) -> bool {
-        self.entries.iter().any(|e| e.d_tag == d_tag)
-    }
-}
-
-impl Default for DynamicSection {
-    fn default() -> Self {
-        Self {
-            virtual_address: 0,
-            offset: 0,
-            alignment: Alignment::new(16).unwrap(),
-            entries: vec![],
-        }
-    }
-}
 
 /// elf dynamic structure representation, it has many structure related to dynamic linking
 #[derive(Clone)]
@@ -138,7 +73,10 @@ impl ELFDynamicStructure {
     /// find dynamic entry for required symbol or library
     fn find_dyn_dt_need_entry(&self, required_symbol_or_lib:&str) -> Option<&DynamicEntry> {
         let offset = self.dynamic_string_table.0.get_string_offset(required_symbol_or_lib)?;
-        self.dynamic_section.entries.iter().find(|entry| entry.d_tag == DTTags::DT_NEEDED && entry.d_val == offset as u64)
+        self.dynamic_section
+            .get_entries()
+            .iter()
+            .find(|entry| entry.d_tag == DTTags::DT_NEEDED && entry.d_val == offset as u64)
     }
 
     /// add new dynamic entry for required symbol or library
@@ -161,8 +99,8 @@ impl ELFDynamicStructure {
     /// add or update string table size entry based on dynamic string table
     pub fn update_string_table_size(&mut self) {
         if self.contains(DTTags::DT_STRSZ) {
-            let index = self.dynamic_section.entries.iter().position(|x| x.d_tag == DTTags::DT_STRSZ).unwrap();
-            self.dynamic_section.entries[index] = self.dynamic_string_table.0.to_dynamic_entry_string_table_size();
+            let index = self.dynamic_section.get_entries().iter().position(|x| x.d_tag == DTTags::DT_STRSZ).unwrap();
+            self.dynamic_section.get_entries_mut()[index] = self.dynamic_string_table.0.to_dynamic_entry_string_table_size();
         } else {
             let entry = self.dynamic_string_table.0.to_dynamic_entry_string_table_size();
             self.dynamic_section.insert_entry(entry);
@@ -171,12 +109,15 @@ impl ELFDynamicStructure {
 
     /// check if contain certain dynamic entry
     pub fn contains(&self, d_tag:DTTags) -> bool {
-        self.dynamic_section.entries.iter().any(|x| x.d_tag == d_tag)
+        self.dynamic_section
+            .get_entries()
+            .iter()
+            .any(|x| x.d_tag == d_tag)
     }
 
     /// get size of entries in bytes
     pub fn get_dynamic_size(&self) -> usize {
-        self.dynamic_section.entries.len() * std::mem::size_of::<DynamicEntry>()
+        self.dynamic_section.get_entries().len() * std::mem::size_of::<DynamicEntry>()
     }
 
     /// Insert an external function symbol with GNU version info and PLT/GOT relocation entries.
@@ -467,7 +408,7 @@ impl ELFDynamicStructure {
                                                 .position(|x| x.d_tag == entry.d_tag); 
 
         if let Some(index) = index_option {
-            self.dynamic_section.entries[index] = entry;
+            self.dynamic_section.get_entries_mut()[index] = entry;
         } else {
             self.dynamic_section.insert_entry(entry);
         }
@@ -500,8 +441,8 @@ impl ELFDynamicStructure {
 
     /// get the dynamic entry list as vector of bytes
     pub fn get_dyanmic_bytes(&self) -> Vec<u8> {
-        let mut bytes = self.dynamic_section.alignment.get_padding_vec();
-        for entry in &self.dynamic_section.entries {
+        let mut bytes = self.dynamic_section.get_alignment().get_padding_vec();
+        for entry in self.dynamic_section.get_entries() {
             bytes.extend_from_slice(&entry.to_bytes());
         }
         bytes
@@ -675,7 +616,7 @@ impl ELFDynamicStructure {
             self.get_section_name(),
             self.get_virtual_address(),
             self.get_section_size(),
-            self.dynamic_section.entries.len()
+            self.dynamic_section.get_entries().len()
         )
     }
 
@@ -687,24 +628,26 @@ impl ELFDynamicStructure {
     }
 
     pub fn get_virtual_address(&self) -> u64 {
-        self.dynamic_section.virtual_address
+        self.dynamic_section.get_virtual_address()
     }
 
     pub fn set_virtual_address(&mut self, vadd:u64) {
-        self.dynamic_section.virtual_address = vadd;
+        self.dynamic_section.set_virtual_address(vadd);
     }
 
     pub fn get_offset(&self) -> u64 {
-        self.dynamic_section.offset
+        self.dynamic_section.get_offset()
     }
 
     pub fn set_offset(&mut self, offset:u64) {
-        let v = self.dynamic_section.alignment.calculate_padding_and_offset(offset);
-        self.dynamic_section.offset = v;
+        let v = self.dynamic_section
+                        .get_alignment_mut()
+                        .calculate_padding_and_offset(offset);
+        self.dynamic_section.set_offset(v);
     }
 
     pub fn get_alignment(&self) -> &Alignment {
-        &self.dynamic_section.alignment
+        self.dynamic_section.get_alignment()
     }
 
     fn find_symbol_by_name_mut(&mut self, symbol_name:&str) -> Option<&mut DynamicSymbolEntry> {
@@ -743,8 +686,10 @@ impl ELFDynamicStructure {
     pub fn remove_unused_structures(&mut self) {
         let is_gnu_version_required_empty = self.gnu_version_required_section.is_empty();
         if is_gnu_version_required_empty {
-            self.dynamic_section.entries.retain(|x| ! x.is_verneed_entry() );
-            self.dynamic_section.entries.retain(|x| ! x.is_verneednum_entry());
+            self.dynamic_section.get_entries_mut()
+                .retain(|x| ! x.is_verneed_entry() );
+            self.dynamic_section.get_entries_mut()
+                .retain(|x| ! x.is_verneednum_entry());
         }
 
 
@@ -789,7 +734,7 @@ impl Debug for ELFDynamicStructure {
                     {gnu_version_r:?},
                     interp_offset @ 0x{:X} }}"###, 
                     self.get_virtual_address(),
-                    self.dynamic_section.entries.len(), self.dynamic_section.entries, 
+                    self.dynamic_section.get_entries().len(), self.dynamic_section.get_entries(), 
             self.dynamic_string_table, 
             self.dynamic_symbol_table, 
             self.plt_relocation_table, 
@@ -838,7 +783,7 @@ impl Default for ELFDynamicStructure {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Accessors)]
 pub struct DynamicEntry {
     d_tag: DTTags,
     d_val: u64,
@@ -927,7 +872,7 @@ mod tests {
         assert!(dynamic.contains(DTTags::DT_RUNPATH));
         assert!(dynstr.contains("$ORIGIN"));
 
-        let runpath = dynamic.dynamic_section.entries.iter()
+        let runpath = dynamic.dynamic_section.get_entries().iter()
             .find(|entry| entry.d_tag == DTTags::DT_RUNPATH)
             .expect("DT_RUNPATH should be present by default");
 
