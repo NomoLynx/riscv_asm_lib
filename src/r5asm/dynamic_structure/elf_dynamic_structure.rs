@@ -400,7 +400,7 @@ impl ELFDynamicStructure {
         dynamic_entries.into_iter().for_each(|n| self.update_entry(n));
     }
 
-    /// update a dynamic entry if it exists. NO insert!
+    /// update a dynamic entry if it exists.
     fn update_entry(&mut self, entry: DynamicEntry) {
         let index_option = self.dynamic_section
                                                 .get_entries()
@@ -408,7 +408,9 @@ impl ELFDynamicStructure {
                                                 .position(|x| x.d_tag == entry.d_tag); 
 
         if let Some(index) = index_option {
-            self.dynamic_section.get_entries_mut()[index] = entry;
+            if entry.is_null_entry() || !entry.is_value_zero() {
+                self.dynamic_section.get_entries_mut()[index] = entry;
+            }
         } else {
             self.dynamic_section.insert_entry(entry);
         }
@@ -826,6 +828,11 @@ impl DynamicEntry {
 
     pub fn is_null_entry(&self) -> bool {
         self.d_tag == DTTags::DT_NULL
+    }
+
+    /// if d_value is 0
+    pub fn is_value_zero(&self) -> bool {
+        self.get_d_val() == 0
     }
 }
 
