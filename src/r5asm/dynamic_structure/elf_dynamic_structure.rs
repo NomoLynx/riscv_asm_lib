@@ -331,6 +331,12 @@ impl ELFDynamicStructure {
                     d_val: self.gnu_hash_section.get_virtual_address(),
                 });
 
+                // Default runtime search path used to resolve sibling shared libraries.
+                dynamic_entries.push(DynamicEntry {
+                    d_tag: DTTags::DT_RUNPATH,
+                    d_val: self.insert_string("$ORIGIN") as u64,
+                });
+
                 // soname entry
                 if let Some(linker_config) = config {
                     if linker_config.get_is_build_lib() {
@@ -423,6 +429,12 @@ impl ELFDynamicStructure {
                 // dynamic_entries.push(DynamicEntry { d_tag: DT_RELA, d_val: self.plt_relocation_table.get_virtual_address() });
                 // dynamic_entries.push(DynamicEntry { d_tag: DT_RELASZ, d_val: self.plt_relocation_table.get_size() as u64 });
                 // dynamic_entries.push(DynamicEntry { d_tag: DT_RELAENT, d_val: PLTRelocationEntry::default().get_size() as u64 });
+
+                // Default runtime search path used to resolve sibling shared libraries.
+                dynamic_entries.push(DynamicEntry {
+                    d_tag: DTTags::DT_RUNPATH,
+                    d_val: self.insert_string("$ORIGIN") as u64,
+                });
 
                 // soname entry
                 if let Some(linker_config) = config {
@@ -895,5 +907,28 @@ impl Debug for DynamicEntry {
 impl Default for DynamicEntry {
     fn default() -> Self {
         Self { d_tag: DTTags::DT_NULL , d_val: 0 }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_dynamic_section_includes_runpath_origin() {
+        let dynamic = ELFDynamicStructure::default();
+        let dynstr = dynamic.get_dynamic_string_table();
+
+        assert!(dynamic.contains(DTTags::DT_RUNPATH));
+        assert!(dynstr.contains("$ORIGIN"));
+
+        let runpath = dynamic.dynamic_section.entries.iter()
+            .find(|entry| entry.d_tag == DTTags::DT_RUNPATH)
+            .expect("DT_RUNPATH should be present by default");
+
+        let expected_offset = dynstr.get_string_offset("$ORIGIN")
+            .expect("$ORIGIN should be inserted into the dynamic string table");
+
+        assert_eq!(runpath.d_val as usize, expected_offset);
     }
 }
