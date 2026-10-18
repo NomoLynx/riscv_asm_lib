@@ -66,6 +66,18 @@ impl LinkerConfig {
         }
     }
 
+    /// Effective virtual-address base used for ELF layout.
+    ///
+    /// Executables keep the configured base address (default 0x8100_0000),
+    /// while shared libraries are position-independent and use a zero base.
+    pub fn get_effective_virtual_address_start(&self) -> u64 {
+        if self.is_build_lib {
+            0
+        } else {
+            self.virutual_address_start
+        }
+    }
+
     /// Processes external functions for all needed libraries.
     /// 
     /// # Arguments

@@ -683,7 +683,7 @@ impl AsmProgram {
     /// the virtual address is used to generate the final binary code
     /// this function also process alignment for the item in data section
     fn generate_program_headers(&mut self, config:&mut CodeGenConfiguration) -> Result<SegmentHeaderList, AsmError> {
-        let va_offset = config.get_linker_config().get_virutual_address_start() as u64;
+        let va_offset = config.get_linker_config().get_effective_virtual_address_start() as u64;
         let mut segment_headers = SegmentHeaderList::default();
 
         //iterate all sections to mark section offset, in the order of 
@@ -727,7 +727,7 @@ impl AsmProgram {
         -> Result<SegmentHeaderList, AsmError> 
     {
         let linker_config = config.get_linker_config();
-        let va_offset = linker_config.get_virutual_address_start() as u64;
+        let va_offset = linker_config.get_effective_virtual_address_start() as u64;
         let mut segment_headers = SegmentHeaderList::default();
 
         //iterate all sections to mark section offset, in the order of 

@@ -290,6 +290,26 @@ impl ELFDynamicStructure {
                     }
                 }
 
+                // Version table (.gnu.version)
+                dynamic_entries.push(DynamicEntry {
+                    d_tag: DTTags::DT_VERSYM,
+                    d_val: self.gnu_version_section.get_virtual_address(),
+                });
+
+                if !self.gnu_version_required_section.is_empty() {
+                    // Version requirements (.gnu.version_r)
+                    dynamic_entries.push(DynamicEntry {
+                        d_tag: DTTags::DT_VERNEED,
+                        d_val: self.gnu_version_required_section.get_virtual_address(),
+                    });
+
+                    // version need entries size
+                    dynamic_entries.push(DynamicEntry {
+                        d_tag: DTTags::DT_VERNEEDNUM,
+                        d_val: self.gnu_version_required_section.get_headers().len() as u64,
+                    });
+                }
+
                 // Terminator
                 dynamic_entries.push(DynamicEntry {
                     d_tag: DTTags::DT_NULL,
@@ -468,7 +488,7 @@ impl ELFDynamicStructure {
     /// plt doesn't need to get virtual address, but other sections will need this virtual address
     /// so we provide this function to keep the interface consistent
     pub fn set_text_segment_address(&mut self, vadd:u64, linker_config:&LinkerConfig) {
-        let va_offset = linker_config.get_virutual_address_start();
+        let va_offset = linker_config.get_effective_virtual_address_start();
         self.plt_section.set_offset(vadd);
         self.plt_section.set_virtual_address(va_offset + self.plt_section.get_offset());
         self.got_plt_section.set_initial_resolver(self.plt_section.get_plt0_address());
@@ -489,7 +509,7 @@ impl ELFDynamicStructure {
     }
 
     pub fn set_data_segment_address(&mut self, starting_vadd:u64, linker_config:&LinkerConfig) {
-        let va_offset = linker_config.get_virutual_address_start();
+        let va_offset = linker_config.get_effective_virtual_address_start();
         let mut vadd = starting_vadd;
         self.got_plt_section.set_offset(vadd);
         self.got_plt_section.set_virtual_address(self.got_plt_section.get_offset() + va_offset);
@@ -540,7 +560,7 @@ impl ELFDynamicStructure {
     /// set the virtual address and offset of the sections in read only segment
     /// the order must be keep the same as the [`to_readonly_segment_data`] function
     pub fn set_rosections_address(&mut self, starting_offset:u64, linker_config:&LinkerConfig) {
-        let va_offset = linker_config.get_virutual_address_start();
+        let va_offset = linker_config.get_effective_virtual_address_start();
         let mut vadd = starting_offset;
         self.dynamic_symbol_table.set_offset(vadd);
         self.dynamic_symbol_table.set_virtual_address(va_offset + self.dynamic_symbol_table.get_offset());
@@ -684,8 +704,10 @@ impl ELFDynamicStructure {
         self.plt_relocation_table.update_jump_slot_offset(got_vadd);
     }
 
-    /// remove unused structures like VERNEED or VERNEEDNUMBER entries
+    /// remove unused structures 
     pub fn remove_unused_structures(&mut self) {
+
+        // like VERNEED or VERNEEDNUMBER entries can be removed if no required version
         let is_gnu_version_required_empty = self.gnu_version_required_section.is_empty();
         if is_gnu_version_required_empty {
             self.dynamic_section.get_entries_mut()
@@ -694,7 +716,17 @@ impl ELFDynamicStructure {
                 .retain(|x| ! x.is_verneednum_entry());
         }
 
+        // remove empty VERSYM
+        self.dynamic_section.get_entries_mut()
+            .retain(|x| !(x.is_versym_entry() && x.is_value_zero()));
 
+        // remove emtpy pltgot
+        self.dynamic_section.get_entries_mut()
+            .retain(|x| !(x.is_pltgot_entry() && x.is_value_zero()));
+
+        // remove emtpy jmprel
+        self.dynamic_section.get_entries_mut()
+            .retain(|x| !(x.is_jmprel_entry() && x.is_value_zero()));
     }
 
     pub fn to_section_headers(&self) -> Elf64SectionHeaderList {
@@ -824,6 +856,18 @@ impl DynamicEntry {
 
     pub fn is_verneednum_entry(&self) -> bool {
         self.d_tag == DTTags::DT_VERNEEDNUM
+    }
+
+    pub fn is_versym_entry(&self) -> bool {
+        self.d_tag == DTTags::DT_VERSYM
+    }
+
+    pub fn is_pltgot_entry(&self) -> bool {
+        self.d_tag == DTTags::DT_PLTGOT
+    }
+
+    pub fn is_jmprel_entry(&self) -> bool {
+        self.d_tag == DTTags::DT_JMPREL
     }
 
     pub fn is_null_entry(&self) -> bool {
