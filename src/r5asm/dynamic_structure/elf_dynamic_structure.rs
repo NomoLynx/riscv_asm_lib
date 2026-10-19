@@ -266,6 +266,30 @@ impl ELFDynamicStructure {
                     d_val: self.dynamic_string_table.0.get_size() as u64,
                 });
 
+                // PLT's GOT (.got.plt)
+                dynamic_entries.push(DynamicEntry {
+                    d_tag: DTTags::DT_PLTGOT,
+                    d_val: self.got_plt_section.get_virtual_address(),
+                });
+
+                // Relocations for PLT (.rela.plt)
+                dynamic_entries.push(DynamicEntry {
+                    d_tag: DTTags::DT_JMPREL,
+                    d_val: self.plt_relocation_table.get_virtual_address(),
+                });
+
+                // Size of .rela.plt (entry count * Elf64_Rela size)
+                dynamic_entries.push(DynamicEntry {
+                    d_tag: DTTags::DT_PLTRELSZ,
+                    d_val: self.plt_relocation_table.get_size() as u64,
+                });
+
+                // Type of PLT relocations (RELA)
+                dynamic_entries.push(DynamicEntry {
+                    d_tag: DTTags::DT_PLTREL,
+                    d_val: DT_RELA,
+                });
+
                 // GNU Hash table (.gnu.hash)
                 dynamic_entries.push(DynamicEntry {
                     d_tag: DTTags::DT_GNU_HASH,
