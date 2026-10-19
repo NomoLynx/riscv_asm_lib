@@ -466,26 +466,28 @@ impl ELFDynamicStructure {
 
     /// find symbol's plt virtual address from symbol name
     /// - Returns Some(virtual_address) if found, None otherwise
-    pub fn find_symbol_plt_virtual_address(&self, symbol_name:&str) -> Option<u64> {
-        let string_table = &self.get_dynamic_string_table();
+    pub fn find_symbol_plt_index(&self, symbol_name:&str) -> Option<usize> {
+        let string_table = self.get_dynamic_string_table();
         let symbol_table = self.get_dynamic_symbol_table();
-        let rela_plt_table = self.get_plt_relocation_table();
+        let target_symbol_index = symbol_table.find_symbol_index_by_name(symbol_name, string_table)? as u32;
 
-        for (i, entry) in rela_plt_table.iter().enumerate() {
-            let sym_index = entry.get_elf64_r_sym_index();
-            if let Some(index) = symbol_table.find_symbol_index_by_name(symbol_name, string_table) {
-                if sym_index == index as u32 {
-                    let plt = self.get_plt_section();
-                    let v = plt.get_virtual_address_of_entry(i);
-                    if v.is_none() {
-                        panic!("Failed to get virtual address of PLT entry for symbol {symbol_name}");
-                    }
+        self.get_plt_relocation_table()
+            .iter()
+            .position(|entry| entry.get_elf64_r_sym_index() == target_symbol_index)
+    }
 
-                    return v;
-                }
+    /// find symbol's plt virtual address from symbol name
+    /// - Returns Some(virtual_address) if found, None otherwise
+    pub fn find_symbol_plt_virtual_address(&self, symbol_name:&str) -> Option<u64> {
+        if let Some(index) = self.find_symbol_plt_index(symbol_name) {
+            let plt = self.get_plt_section();
+            let v = plt.get_virtual_address_of_entry(index);
+            if v.is_none() {
+                panic!("Failed to get virtual address of PLT entry for symbol {symbol_name}");
             }
+            return v;
         }
-        
+
         None
     }
 
