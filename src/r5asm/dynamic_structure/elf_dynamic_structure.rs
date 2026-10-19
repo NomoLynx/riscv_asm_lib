@@ -314,11 +314,13 @@ impl ELFDynamicStructure {
                     }
                 }
 
-                // Version table (.gnu.version)
-                dynamic_entries.push(DynamicEntry {
-                    d_tag: DTTags::DT_VERSYM,
-                    d_val: self.gnu_version_section.get_virtual_address(),
-                });
+                // Version table (.gnu.version), only when version requirements exist
+                if !self.gnu_version_required_section.is_empty() {
+                    dynamic_entries.push(DynamicEntry {
+                        d_tag: DTTags::DT_VERSYM,
+                        d_val: self.gnu_version_section.get_virtual_address(),
+                    });
+                }
 
                 if !self.gnu_version_required_section.is_empty() {
                     // Version requirements (.gnu.version_r)
@@ -390,11 +392,13 @@ impl ELFDynamicStructure {
                     d_val: self.gnu_hash_section.get_virtual_address(),
                 });
 
-                // Version table (.gnu.version)
-                dynamic_entries.push(DynamicEntry {
-                    d_tag: DTTags::DT_VERSYM,
-                    d_val: self.gnu_version_section.get_virtual_address(),
-                });
+                // Version table (.gnu.version), only when version requirements exist
+                if !self.gnu_version_required_section.is_empty() {
+                    dynamic_entries.push(DynamicEntry {
+                        d_tag: DTTags::DT_VERSYM,
+                        d_val: self.gnu_version_section.get_virtual_address(),
+                    });
+                }
 
                 if !self.gnu_version_required_section.is_empty() {
                     // Version requirements (.gnu.version_r)
@@ -576,8 +580,12 @@ impl ELFDynamicStructure {
         data = data + self.dynamic_string_table.0.to_data_section();
         data = data + self.plt_relocation_table.to_data_section();
         data = data + self.gnu_hash_section.to_data_section();
-        data = data + self.gnu_version_section.to_data_section();
-        data = data + self.gnu_version_required_section.to_data_section();
+        if !self.gnu_version_required_section.is_empty() {
+            data = data + self.gnu_version_section.to_data_section();
+        }
+        if !self.gnu_version_required_section.is_empty() {
+            data = data + self.gnu_version_required_section.to_data_section();
+        }
         data
     }
 
@@ -606,12 +614,22 @@ impl ELFDynamicStructure {
         self.gnu_hash_section.set_virtual_address(va_offset + self.gnu_hash_section.get_offset());
 
         vadd += self.gnu_hash_section.get_section_size() as u64;
-        self.gnu_version_section.set_offset(vadd);
-        self.gnu_version_section.set_virtual_address(va_offset + self.gnu_version_section.get_offset());
+        if !self.gnu_version_required_section.is_empty() {
+            self.gnu_version_section.set_offset(vadd);
+            self.gnu_version_section.set_virtual_address(va_offset + self.gnu_version_section.get_offset());
+            vadd += self.gnu_version_section.get_section_size() as u64;
+        } else {
+            self.gnu_version_section.set_offset(0);
+            self.gnu_version_section.set_virtual_address(0);
+        }
 
-        vadd += self.gnu_version_section.get_section_size() as u64;
-        self.gnu_version_required_section.set_offset(vadd);
-        self.gnu_version_required_section.set_virtual_address(va_offset + self.gnu_version_required_section.get_offset());
+        if !self.gnu_version_required_section.is_empty() {
+            self.gnu_version_required_section.set_offset(vadd);
+            self.gnu_version_required_section.set_virtual_address(va_offset + self.gnu_version_required_section.get_offset());
+        } else {
+            self.gnu_version_required_section.set_offset(0);
+            self.gnu_version_required_section.set_virtual_address(0);
+        }
 
         self.build_dynamic_section(Some(linker_config));
     }
@@ -627,8 +645,12 @@ impl ELFDynamicStructure {
         tag += &format!("{} @ 0x{:X}/{}, ", self.dynamic_string_table.0.get_section_name(), self.dynamic_string_table.0.get_virtual_address(), self.dynamic_string_table.0.get_section_size());
         tag += &format!("{} @ 0x{:X}/{}, ", self.plt_relocation_table.get_section_name(), self.plt_relocation_table.get_virtual_address(), self.plt_relocation_table.get_section_size());
         tag += &format!("{} @ 0x{:X}/{}, ", self.gnu_hash_section.get_section_name(), self.gnu_hash_section.get_virtual_address(), self.gnu_hash_section.get_section_size());
-        tag += &format!("{} @ 0x{:X}/{}, ", self.gnu_version_section.get_section_name(), self.gnu_version_section.get_virtual_address(), self.gnu_version_section.get_section_size());
-        tag += &format!("{} @ 0x{:X}/{}, ", self.gnu_version_required_section.get_section_name(), self.gnu_version_required_section.get_virtual_address(), self.gnu_version_required_section.get_section_size());
+        if !self.gnu_version_required_section.is_empty() {
+            tag += &format!("{} @ 0x{:X}/{}, ", self.gnu_version_section.get_section_name(), self.gnu_version_section.get_virtual_address(), self.gnu_version_section.get_section_size());
+        }
+        if !self.gnu_version_required_section.is_empty() {
+            tag += &format!("{} @ 0x{:X}/{}, ", self.gnu_version_required_section.get_section_name(), self.gnu_version_required_section.get_virtual_address(), self.gnu_version_required_section.get_section_size());
+        }
         tag
     }
 
@@ -638,8 +660,8 @@ impl ELFDynamicStructure {
         self.dynamic_string_table.0.get_section_size() +
         self.plt_relocation_table.get_section_size() +
         self.gnu_hash_section.get_section_size() +
-        self.gnu_version_section.get_section_size() +
-        self.gnu_version_required_section.get_section_size()
+        if !self.gnu_version_required_section.is_empty() { self.gnu_version_section.get_section_size() } else { 0 } +
+        if !self.gnu_version_required_section.is_empty() { self.gnu_version_required_section.get_section_size() } else { 0 }
     }
 
     /// generate text segment tag for debug purpose
@@ -738,6 +760,8 @@ impl ELFDynamicStructure {
                 .retain(|x| ! x.is_verneed_entry() );
             self.dynamic_section.get_entries_mut()
                 .retain(|x| ! x.is_verneednum_entry());
+            self.dynamic_section.get_entries_mut()
+                .retain(|x| !x.is_versym_entry());
         }
 
         // remove empty VERSYM
@@ -761,8 +785,12 @@ impl ELFDynamicStructure {
         headers <<= &self.dynamic_string_table;
         headers <<= &self.plt_relocation_table;
         headers <<= &self.gnu_hash_section;
-        headers <<= &self.gnu_version_section;
-        headers <<= &self.gnu_version_required_section;
+        if !self.gnu_version_required_section.is_empty() {
+            headers <<= &self.gnu_version_section;
+        }
+        if !self.gnu_version_required_section.is_empty() {
+            headers <<= &self.gnu_version_required_section;
+        }
         headers <<= self;
         headers
     }
