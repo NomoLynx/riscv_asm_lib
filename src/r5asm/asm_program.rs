@@ -765,10 +765,12 @@ impl AsmProgram {
         let ro_segment = ProgramHeader::new3(SectionType::Readonlydata, offset as u64, offset as u64 + va_offset, segment_size as u64);
         segment_headers.add((ro_segment, SectionType::Readonlydata).into());
 
-        // generate interp segment
-        let interp_offset = dynamic_struture.get_interp_offset(); 
-        let interp_segment = ProgramHeader::new_interp(interp_offset as u64, interp_offset as u64 + va_offset, intrep_length as u64, intrep_length as u64);
-        segment_headers.add((interp_segment, SectionType::Interp).into());
+        // generate interp segment only for executables (shared libraries must not emit PT_INTERP)
+        if !linker_config.get_is_build_lib() {
+            let interp_offset = dynamic_struture.get_interp_offset(); 
+            let interp_segment = ProgramHeader::new_interp(interp_offset as u64, interp_offset as u64 + va_offset, intrep_length as u64, intrep_length as u64);
+            segment_headers.add((interp_segment, SectionType::Interp).into());
+        }
 
         //dynamic headers
         let segment_size = dynamic_struture.get_section_data_size() as u64;
@@ -882,7 +884,7 @@ impl AsmProgram {
         let data_segment = & segment_headers[SectionType::Data];
         let bss_segment = & segment_headers[SectionType::Bss];
         let ro_segment = & segment_headers[SectionType::Readonlydata];
-        let interp_segment = & segment_headers[SectionType::Interp];
+        let interp_segment = segment_headers.get_segment_header(&SectionType::Interp);
         let dynamic_section = & segment_headers[SectionType::Dynamic];
         let phdr_segment = & segment_headers[SectionType::Phdr];
         let phdr_readonly_segment = & segment_headers[SectionType::Phdrsegment];
@@ -915,8 +917,10 @@ impl AsmProgram {
             assert!(code.get_size() as u64 == ro_segment.get_memory_size(), "rodata size {} must be equal to rodata segment size {}", code.get_size(), ro_segment.get_memory_size());
             elf_file.add_read_only_section(code, ro_segment.get_virtual_address());
         }
-        if interp_segment.get_memory_size() > 0 {
-            elf_file.add_interpreter_section(&interp_segment);
+        if let Some(interp_segment) = interp_segment {
+            if interp_segment.get_memory_size() > 0 {
+                elf_file.add_interpreter_section(interp_segment);
+            }
         }
         if dynamic_section.get_memory_size() > 0 {
             elf_file.add_dynamic_section(dynamic_section);
