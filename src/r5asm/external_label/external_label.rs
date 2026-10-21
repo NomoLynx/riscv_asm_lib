@@ -47,7 +47,7 @@ impl ExternalLabel {
             }
         }
         else {
-            Ok(())
+            Err(AsmError::NoFound((file!(), line!()).into(), format!("cannot find external function symbol '{symbol_name}' in dynamic symbol table")))
         }
     }
 }

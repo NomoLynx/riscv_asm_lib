@@ -1771,8 +1771,9 @@ impl Instruction {
         }
     }
 
-    /// get imm value from imm string, if imm is label, then get label's address, if imm is register, then get register's value
-    pub (crate) fn get_imm_value(&self, labels:&LabelOffsetTable, regs:&Register, external_symbols: &Vec<ExternalLabel>, current_offset:usize) -> Result<u32, AsmError> {
+    /// get imm value from imm string, if imm is label, then get label's address, 
+    /// if imm is register, then get register's value
+    pub fn get_imm_value(&self, labels:&LabelOffsetTable, regs:&Register, external_symbols: &Vec<ExternalLabel>, current_offset:usize) -> Result<u32, AsmError> {
         if let Some(_imm_str) = self.imm.as_ref() {
             let pc = if self.need_offset() { current_offset as u32 } else { 0 };
 
@@ -1784,7 +1785,8 @@ impl Instruction {
                     if let Some(addr) = v {
                         return self.process_rel_fun(addr, pc);
                     } else {
-                        return Ok(0); //if address is not available, return 0
+                        let msg = format!("external symbol '{imm_str}' is not resolved to a PLT address");
+                        return Err(AsmError::NoFound((file!(), line!()).into(), msg));
                     }
                 }
             }
