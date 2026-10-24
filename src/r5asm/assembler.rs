@@ -40,9 +40,8 @@ pub fn parse_asm_use_default_config(input:&str) -> Result<AsmProgram, AsmError> 
     program.second_round(&mut config)?;
     program.third_round()?;
 
-    // Optional: apply a base PC to .text so returned offsets are relocated
-    program.update_section(SectionType::Text, 100 as usize);
-    program.update_label_virtual_address(None)?;
+    // Apply virtual addresses with dynamic-structure awareness.
+    program.update_virtual_address_for_parse(&mut config)?;
 
     Ok(program)
 }

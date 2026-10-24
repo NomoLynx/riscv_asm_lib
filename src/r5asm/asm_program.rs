@@ -975,6 +975,30 @@ impl AsmProgram {
         self.contains_global_directive()
     }
 
+    /// update virtual addresses for parse-only flow.
+    /// - non-dynamic program: keep the historical text base pc = 100
+    /// - dynamic program: build a temporary dynamic structure so external symbols
+    ///   can be resolved to PLT virtual addresses
+    pub (crate) fn update_virtual_address_for_parse(&mut self, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
+        if self.need_dynamic_structure() {
+            let mut dynamic_structure = ELFDynamicStructure::default();
+            dynamic_structure.insert_required_libs_from_linker_config(config.get_linker_config());
+            dynamic_structure.insert_external_functions(self, config);
+            dynamic_structure.add_global_functions(self);
+            dynamic_structure.create_hash_section();
+            dynamic_structure.remove_unused_structures();
+
+            self.generate_dynamic_program_headers(config, &mut dynamic_structure)?;
+            self.update_label_virtual_address(Some(&dynamic_structure))?;
+        } else {
+            self.update_section(SectionType::Text, 100 as usize);
+            self.update_label_virtual_address(None)?;
+        }
+
+        self.refresh_label_tables();
+        Ok(())
+    }
+
     fn refresh_label_tables(&mut self) {
         for section in self.sections.iter_mut() {
             section.create_label_and_offset_table();
