@@ -3,14 +3,28 @@
 
 A RISC-V assembler and linker library written in Rust, capable of parsing RISC-V assembly source text and producing ELF output for both executables and shared libraries.
 
-This project used diagram-to-code idea and will need [Rust Macro Internal](https://github.com/NomoLynx/rust_macro_internal) to compile. If you want to view the diagram please install markdown and mermiad viewer in your IDE (e.g. VSCode)
+This project uses a diagram-to-code workflow and needs [Rust Macro Internal](https://github.com/NomoLynx/rust_macro_internal) to compile. If you want to view the diagrams, install a Markdown and Mermaid viewer in your IDE (for example, VS Code).
 
 ## Recent Updates
 
+- **2026-10-25**: Refreshed the project documentation to call out the current feature set, including multi-file assembly projects, Mermaid state-machine code generation, Markdown/INI-driven data sections, bit-manip support, and shared-library output.
 - **2026-10-07**: Added Mermaid-driven state machine code generation. State diagrams can be translated into assembly dispatch code with per-state transition handlers, event IDs, and jump-table dispatch logic.
 - **2026-10-03**: Added INI-driven multi-source assembly support. The assembler now accepts multiple `.s` files via `ASMSolution` and relative path resolution from the INI file folder. Dedicated entry points are available for INI-based builds while the original single-file path-based build API remains unchanged.
 - **2026-03-29**: Added and documented RV64 Zbb word-form instructions (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
 - **2026-03-29**: Added explicit bit-manip instruction test coverage references for `zbb_core.s`, `zbb_word.s`, and `zbs_extra.s`.
+
+---
+
+## Feature Highlights
+
+The assembler is now a practical toolbox for building small firmware and system-software projects from RISC-V assembly, not just a parser for isolated directives:
+
+- **Multi-file project builds** — `ASMSolution` and INI-driven layout let you assemble an entire project from a root config plus multiple `.s` source files.
+- **Markdown and INI data integration** — `.data.md` and structured data helpers let you generate `.data` sections from table-based definitions without hand-editing raw binary layouts.
+- **Mermaid-driven code generation** — state diagrams can be converted into event/state constants and dispatcher code, which is useful for workflow and control logic.
+- **Extended bit-manip support** — `Zba`, `Zbb`, and `Zbs` instruction families are supported, including RV64 word-form encodings like `clzw`, `ctzw`, and `cpopw`.
+- **Shared-library and ELF output** — the library can emit standard ELF executables or shared-object targets with PLT-backed dynamic structures.
+- **C-friendly integration** — the crate exposes a C-compatible library interface for FFI-based workflows and toolchains.
 
 ---
 
