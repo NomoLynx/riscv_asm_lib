@@ -72,6 +72,7 @@ impl AsmProgram {
         })
     }
 
+    /// validate the section instruction semantics
     pub (crate) fn validate_section_semantics(&self) -> Result<(), AsmError> {
         for section in &self.sections {
             match section.get_section_type() {
@@ -101,6 +102,15 @@ impl AsmProgram {
                                         section.get_section_type().generate_code_string()
                                     ),
                                 ));
+                            }
+
+                            if directive.is_extern() {
+                                return Err(AsmError::GeneralError(
+                                    (file!(), line!()).into(),
+                                    format!("extern is not allowed in {} section", 
+                                        section.get_section_type().generate_code_string())
+                                    )
+                                );
                             }
                         }
                     }
