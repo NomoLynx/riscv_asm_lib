@@ -12,6 +12,8 @@ fn print_time(label: &str) {
     println!("cargo:warning={}: [riscv_asm_lib build] {label}", now);
 }
 
+/// Parse all macro instruction names from the given markdown content.
+/// Returns a vector of macro instruction names found in the markdown.
 fn parse_macro_instruction_names(markdown: &str) -> Vec<String> {
     let md = load_md_file_from_str(markdown).expect("failed to parse macro_instruction.md");
     let tables = md.get_tables();
@@ -46,6 +48,8 @@ fn normalize_pest_source_for_parser(pest_source: &str) -> String {
     pest_source.replace("#inc_name = ", "")
 }
 
+/// Parse all string literals from the given pest source.
+/// Returns a vector of unique string literals found in the source.
 fn parse_all_pest_string_literals(pest_source: &str) -> Vec<String> {
     let normalized_pest_source = normalize_pest_source_for_parser(pest_source);
     let rules = pest_parse(&normalized_pest_source).expect("failed to parse r5asm.pest");
@@ -71,7 +75,8 @@ fn validate_markdown_instructions_are_defined(markdown_names: &[String], pest_so
         .iter()
         .filter(|name| !pest_names.contains(name.as_str()))
     {
-        print_time(&format!("macro instruction {missing_name} NOT defined in r5asm.pest"));
+        let err_msg = format!("macro instruction '{missing_name}' NOT defined in r5asm.pest");
+        print_time(&err_msg);
     }
 }
 
