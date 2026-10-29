@@ -3,9 +3,12 @@ use std::fs;
 use std::path::Path;
 
 use chrono::Local;
+use core_utils::filesystem::append_to_file_from_path;
 use parser_lib::markdown_lang::load_md_file_from_str;
 use parser_lib::pest_parser::{PestAtom, PestExpression};
 use parser_lib::pest_parser::pest_pest::pest_parse;
+
+pub const WARNING_OUTPUT_FOLDER: &str = "logs/warnings";
 
 fn print_time(label: &str) {
     let now = Local::now().format("%Y-%m-%d %H:%M:%S");
@@ -75,7 +78,12 @@ fn validate_markdown_instructions_are_defined(markdown_names: &[String], pest_so
         .iter()
         .filter(|name| !pest_names.contains(name.as_str()))
     {
-        let err_msg = format!("macro instruction '{missing_name}' NOT defined in r5asm.pest");
+        let err_msg = format!("macro instruction '{missing_name}' NOT defined in r5asm.pest\n");
+        let warning_file_path = Path::new(WARNING_OUTPUT_FOLDER).join("missing_macro_instructions.txt");
+        match append_to_file_from_path(&warning_file_path, &err_msg) {
+            Ok(_) => {}
+            Err(_) => eprintln!("Failed to append to file: {}", warning_file_path.display()),
+        }
         print_time(&err_msg);
     }
 }
