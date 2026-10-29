@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use chrono::Local;
-use core_utils::filesystem::append_to_file_from_path;
+use core_utils::filesystem::{append_to_file_from_path, delete_file_path};
 use parser_lib::markdown_lang::load_md_file_from_str;
 use parser_lib::pest_parser::{PestAtom, PestExpression};
 use parser_lib::pest_parser::pest_pest::pest_parse;
@@ -73,13 +73,15 @@ fn validate_markdown_instructions_are_defined(markdown_names: &[String], pest_so
     let pest_names: HashSet<String> = parse_all_pest_string_literals(pest_source)
         .into_iter()
         .collect();
-
+    
+    let warning_file_path = Path::new(WARNING_OUTPUT_FOLDER).join("missing_macro_instructions.txt");
+    let _ = delete_file_path(&warning_file_path);
     for missing_name in markdown_names
         .iter()
         .filter(|name| !pest_names.contains(name.as_str()))
     {
         let err_msg = format!("macro instruction '{missing_name}' NOT defined in r5asm.pest\n");
-        let warning_file_path = Path::new(WARNING_OUTPUT_FOLDER).join("missing_macro_instructions.txt");
+        
         match append_to_file_from_path(&warning_file_path, &err_msg) {
             Ok(_) => {}
             Err(_) => eprintln!("Failed to append to file: {}", warning_file_path.display()),
