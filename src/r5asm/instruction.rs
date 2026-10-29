@@ -1066,6 +1066,16 @@ impl Instruction {
                             Ok([r].to_vec())
                         }
                     }
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::float, p2)] => {
+                        if replace_pseudo {
+                            let parameters = vec![p.as_str().to_string(), p1.as_str().to_string(), p2.as_str().to_string()];
+                            Self::get_psueduo_replacement(inc_name_low_case, &parameters, config)
+                        }
+                        else {
+                            let r = Self::new_r0_r1_imm(inc_name, InstructionTypes::UnKnown, BasicInstructionExtensions::Unknown, p, p1, p2);
+                            Ok([r].to_vec())
+                        }
+                    }
                     [_, (Rule::registers, p)] => {
                         if replace_pseudo {
                             match inc_name_low_case {
