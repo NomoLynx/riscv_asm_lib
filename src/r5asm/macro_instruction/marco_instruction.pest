@@ -1,12 +1,16 @@
 macro_snippet = { SOI ~ (marco_instruction ~ ";"?)* ~ EOI } 
 
-marco_instruction = { inc ~ item ~ "," ~ item ~ "," ~ item | 
+marco_instruction = { 
+    inc ~ item ~ "," ~ item ~ "," ~ operator ~ "(" ~ item ~ ")" |
+    inc ~ item ~ "," ~ item ~ "," ~ item | 
+    inc ~ item ~ "," ~ operator ~ "(" ~ item ~ ")" |
     inc ~ item ~ "," ~ item | 
     inc ~ item | 
     inc }
 
 inc = @{ ("." | "_" | ASCII_ALPHANUMERIC)+ }
 item = @{ ("$" | "+" | "-" | "." | "_" | ASCII_ALPHANUMERIC)+ }
+operator = @{ ("%" | ASCII_ALPHANUMERIC)+ }
 
 // ⁂ white space rule, which will be applied implicitly
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }

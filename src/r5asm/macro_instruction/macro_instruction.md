@@ -185,8 +185,8 @@ load f32 immeidate value to float register (64bit), this case shows the value is
 load f32 immediate value to float register (64bit). The sample code is li.f32 ft0, t0, 3.14. It shows 3.14 is moved to ft0 via t0.
 
 ```asm
-    lui $2, $4          # load high portion
-    addi $2, $2, $3     # add low portion
+    lui $2, %hi($3)          # load high portion
+    addi $2, $2, %lo($3)     # add low portion
     fmv.s.x $1, $2
 ```
 

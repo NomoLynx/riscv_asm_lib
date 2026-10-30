@@ -124,6 +124,7 @@ pub (crate) fn parse_macro_instructions(file_content: &str) -> Result<MacroInstr
                     Err(e) => {
                         // err output cannot parse code block after header
                         error_string(format!("cannot parse code block '{header_text}' with key = '{key}'"));
+                        error_string(format!("code failed to parse are below:\n{code_text}"));
                         error_string(format!("{e:?}"));
                         Err(ParserLibError::NoFound((file!().to_string(), line!()).into(), format!("cannot parse code block with header: {}", header_text)))?;
                     }
