@@ -141,7 +141,9 @@ impl MacroInstruction {
             Ok(inc)
         }
         else {
-            Err(AsmError::GeneralError((file!(), line!()).into(), format!("cannot convert internal macro instruction to basic instruction: {self}")))
+            let err_msg = format!("cannot parse basic instruction from string: {self}");
+            error_string(err_msg.clone());
+            Err(AsmError::GeneralError((file!(), line!()).into(), err_msg))
         }
     }
 }
