@@ -189,6 +189,7 @@ rv_64_128 = {
     #inc_name = rv_64_128_shift_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~  shamt |   
     #inc_name = rv_64_128_shift_incs ~ rd ~ "," ~ rs1 ~ "," ~  rs2 |         //shifts
     #inc_name = rv_64_128_arithematic_imm_incs ~ rd ~ "," ~ rs1 ~ "," ~ imm | 
+    #inc_name = rv_64_128_arithematic_alias_incs ~ rd ~ "," ~ rs1 |
     #inc_name = rv_64_128_arithematic_incs ~ rd ~ "," ~ rs1 ~ "," ~  rs2              //arithemtic
 }
 
@@ -197,6 +198,7 @@ rv_64_128_store_incs = { (^"sq" | ^"sd") }
 rv_64_128_shift_imm_incs = { (^"slliw" | ^"sllid" | ^"srliw" | ^"srlid" | ^"sraiw" | ^"sraid") }
 rv_64_128_shift_incs = { (^"sllw" | ^"slld" | ^"srlw" | ^"srld" | ^"sraw" | ^"srad") }
 rv_64_128_arithematic_imm_incs = { (^"addiw" | ^"addid") }
+rv_64_128_arithematic_alias_incs = { ^"sext.w" }
 rv_64_128_arithematic_incs = { (^"addw" | ^"addd" | ^"subw" | ^"subd") }
 
 rv_zba_instructions = {
@@ -437,7 +439,7 @@ pseudoinstructions_store_incs = { (^"sb" | ^"sh" | ^"sw" | ^"sd" | ^"flw" | ^"fl
 pseudoinstructions_nop = { ^"nop" }
 pseudoinstructions_li = { ^"li" }
 pseudoinstructions_float_li_incs = { (^"li.f32_near" | ^"li.f32" | ^"li.f64_near" | ^"li.f64") }
-pseudoinstructions_move_incs = { (^"mv" | ^"not" | ^"negw" | ^"neg" | ^"sext.b" | ^"sext.h" | ^"sext.w" | ^"zext.b" | ^"zext.h" | ^"zext.w" | ^"seqz" | ^"snez" | ^"sltz" | ^"sgtz" | ^"fmv.s" | ^"fabs.s" | ^"fneg.s" | ^"fmv.d" | ^"fabs.d" | ^"fneg.d") }
+pseudoinstructions_move_incs = { (^"mv" | ^"not" | ^"negw" | ^"neg" | ^"sext.b" | ^"sext.h" | ^"zext.b" | ^"zext.h" | ^"zext.w" | ^"seqz" | ^"snez" | ^"sltz" | ^"sgtz" | ^"fmv.s" | ^"fabs.s" | ^"fneg.s" | ^"fmv.d" | ^"fabs.d" | ^"fneg.d") }
 pseudoinstructions_compare_incs = { (^"beqz" | ^"bnez" | ^"blez" | ^"bgez" | ^"bltz" | ^"bgtz") }
 pseudoinstructions_compare_offset_incs = { (^"bgtu" | ^"bleu" | ^"bgt" | ^"ble") }
 pseudoinstructions_jump_incs = { (^"jalr" | ^"jr") }
@@ -461,8 +463,9 @@ pseudoinstructions_save_incs = { (^"save" | ^"restore") }     //save the registe
 relocation_function_name = @{
     "%" ~ (^"hi" | ^"lo" | ^"pcrel_hi_la" | ^"pcrel_lo_la" | ^"pcrel_hi" | ^"pcrel_lo" | ^"tprel_hi" | ^"tprel_lo" | ^"tprel_add" | ^"tls_ie_pcrel_hi" | ^"tls_gd_pcrel_hi" | ^"got_pcrel_hi" | ^"len")
 }
+relocation_function_arg = { symbol | number }
 relocation_function = {
-    relocation_function_name ~ "(" ~ symbol ~ ")"
+    relocation_function_name ~ "(" ~ relocation_function_arg ~ ")"
 }
 
 rd = _{ registers }

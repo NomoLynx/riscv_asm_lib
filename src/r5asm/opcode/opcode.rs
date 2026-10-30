@@ -80,6 +80,7 @@ impl OpCode {
 
             //RV64I extension ops
             "ADDIW" => Some(Self::Addiw),
+            "SEXT.W" => Some(Self::Addiw),
             "SLLIW" => Some(Self::Slliw),
             "SRAIW" => Some(Self::Sraiw),
             "SRLIW" => Some(Self::Srliw),

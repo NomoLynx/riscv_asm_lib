@@ -388,6 +388,27 @@ sraiw x1, x2, 3\n";
     }
 
     #[test]
+    fn test_rv64_alias_sextw_parser_and_encoding() {
+        set_test_cwd_for_r5asm_data();
+
+        let parsed = r5asm_pest::R5AsmParser::parse(r5asm_pest::Rule::instruction, "sext.w x1, x2");
+        assert!(parsed.is_ok(), "failed to parse rv64 alias instruction: sext.w");
+
+        let input = ".text\n\
+sext.w x1, x2\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params).expect("sext.w alias snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        let expected = vec![
+            0x0001_009B, // sext.w x1, x2 (alias to addiw x1, x2, 0)
+        ];
+
+        assert_eq!(words, expected);
+    }
+
+    #[test]
     fn test_rvv_vset_instruction_parser_acceptance() {
         let cases = [
             "vsetvli x5, x6, e32, m1, ta, ma",

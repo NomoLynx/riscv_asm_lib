@@ -117,6 +117,7 @@ impl Instruction {
             "cpop" => Some("1538".to_string()),    // 0b011000000010
             "sext.b" => Some("1540".to_string()),  // 0b011000000100
             "sext.h" => Some("1541".to_string()),  // 0b011000000101
+            "sext.w" => Some("0".to_string()),     // alias form of addiw rd, rs1, 0
             "orc.b" => Some("647".to_string()),    // 0b001010000111
             "rev8" => Some("1720".to_string()),    // 0b011010111000 (rv64)
             "clzw" => Some("1536".to_string()),    // 0b011000000000 (RV64 word)
@@ -680,6 +681,14 @@ impl Instruction {
                     }
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::registers, p2)] => 
                         Ok([Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
+                    [_, (Rule::registers, p), (Rule::registers, p1)] => {
+                        let fixed_imm = Self::process_fixed_i_imm_value(&inc_name);
+                        let mut r = Self::new_r0_r1(inc_name, inc_type, extention_type, p, p1);
+                        if let Some(imm) = fixed_imm {
+                            r.set_imm(Some(imm.into()));
+                        }
+                        Ok([r].to_vec())
+                    }
                     [_, (Rule::registers, p)] => 
                         Ok([Self::new_r0(inc_name, inc_type, extention_type, p)].to_vec()),
                     [_] => 
@@ -1835,7 +1844,7 @@ impl Instruction {
                 "%pcrel_hi" => Ok(Self::pcrel_hi(imm_address, pc)),
                 "%pcrel_lo" => Ok(Self::pcrel_lo(imm_address, pc)),
                 "%hi" => {
-                    let r = imm_address >> 12;
+                    let r = imm_address.wrapping_add(0x800) >> 12;
                     Ok(r)
                 }
                 "%lo" => {
@@ -1914,6 +1923,16 @@ impl Instruction {
                 regs.get_register_value(Some(&imm)).map(|x| x as u32)
             }
             else { //convert imm to u32 
+                if let Some(rel_fun) = self.get_rel_fun() {
+                    let rel_fun = rel_fun.to_lowercase();
+                    if (rel_fun == "%hi" || rel_fun == "%lo")
+                        && get_i64_from_str(&imm).is_err()
+                    {
+                        if let Ok(v) = get_f32_from_str(&imm) {
+                            return Ok(v.to_bits());
+                        }
+                    }
+                }
                 Self::imm_str_to_u32(&imm)
             }
         }
