@@ -204,8 +204,14 @@ load f64 immeidate value to float register (64bit), this case shows the value is
 load f64 immediate value to float register (64bit). The sample code is li.f64 ft0, t0, 3.14. It shows 3.14 is moved to ft0 via t0.
 
 ```asm
-    lui $2, $4
-    addi $2, $2, $3
+    lui $2, %hi20($3)
+    addi $2, $2, %lo12($3)
+    slli $2, $2, 11
+    addi $2, $2, %c1($3)
+    slli $2, $2, 11
+    addi $2, $2, %c2($3)
+    slli $2, $2, 10
+    addi $2, $2, %c3($3)
     fmv.d.x $1, $2
 ```
 

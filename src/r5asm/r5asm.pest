@@ -461,7 +461,7 @@ pseudoinstructions_csr_rd_rs_incs = { (^"fscsr" | ^"fsrm" | ^"fsflags" | ^"frsr"
 pseudoinstructions_save_incs = { (^"save" | ^"restore") }     //save the register to memory or restore from memory
 
 relocation_function_name = @{
-    "%" ~ (^"hi" | ^"lo" | ^"pcrel_hi_la" | ^"pcrel_lo_la" | ^"pcrel_hi" | ^"pcrel_lo" | ^"tprel_hi" | ^"tprel_lo" | ^"tprel_add" | ^"tls_ie_pcrel_hi" | ^"tls_gd_pcrel_hi" | ^"got_pcrel_hi" | ^"len")
+    "%" ~ (^"hi20" | ^"lo12" | ^"hi" | ^"lo" | ^"c1" | ^"c2" | ^"c3" | ^"pcrel_hi_la" | ^"pcrel_lo_la" | ^"pcrel_hi" | ^"pcrel_lo" | ^"tprel_hi" | ^"tprel_lo" | ^"tprel_add" | ^"tls_ie_pcrel_hi" | ^"tls_gd_pcrel_hi" | ^"got_pcrel_hi" | ^"len")
 }
 relocation_function_arg = { symbol | number }
 relocation_function = {

@@ -140,6 +140,57 @@ pub (self) mod tests {
     }
 
     #[test]
+    fn test_float64_relocation_functions_are_parsed_and_resolved() {
+        let mut config = code_gen_config::CodeGenConfiguration::default();
+        let labels = label_offset::LabelOffsetTable::default();
+        let regs = register::Register::new();
+        let ext = Vec::new();
+        let bits = 3.14_f64.to_bits();
+        let hi32 = (bits >> 32) as u32;
+
+        let cases = [
+            ("lui t0, %hi20(3.14)", hi32.wrapping_add(0x800) >> 12),
+            ("addi t0, t0, %lo12(3.14)", hi32 & 0x0fff),
+            ("addi t0, t0, %c1(3.14)", ((bits >> 21) & 0x07ff) as u32),
+            ("addi t0, t0, %c2(3.14)", ((bits >> 10) & 0x07ff) as u32),
+            ("addi t0, t0, %c3(3.14)", (bits & 0x03ff) as u32),
+        ];
+
+        for (code, expected) in cases {
+            let incs = instruction::Instruction::from_string(code, &mut config)
+                .expect("instruction should parse");
+            let got = incs[0]
+                .get_imm_value(&labels, &regs, &ext, 0)
+                .expect("relocation should resolve");
+            assert_eq!(got, expected, "unexpected immediate for `{code}`");
+        }
+    }
+
+    #[test]
+    fn test_li_f64_macro_uses_64bit_relocation_functions() {
+        set_test_cwd_for_r5asm_data();
+        let mut config = code_gen_config::CodeGenConfiguration::default();
+        let incs = instruction::Instruction::from_string("li.f64 ft0, t0, 3.14", &mut config)
+            .expect("li.f64 should expand");
+
+        let rel_funs: Vec<String> = incs
+            .iter()
+            .filter_map(|x| x.get_rel_fun().cloned())
+            .collect();
+
+        assert_eq!(
+            rel_funs,
+            vec![
+                "%hi20".to_string(),
+                "%lo12".to_string(),
+                "%c1".to_string(),
+                "%c2".to_string(),
+                "%c3".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn test_zba_instruction_parser_acceptance() {
         let cases = [
             "add.uw x1, x2, x3",

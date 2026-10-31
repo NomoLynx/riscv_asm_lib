@@ -1811,8 +1811,14 @@ impl Instruction {
             }
             
             if let Some(_f) = self.rel_fun.as_ref() {
-                let imm_address = self.get_imm_from_str(labels, regs, current_offset)?;
-                self.process_rel_fun(imm_address, pc)
+                if self.use_rel_fun64() {
+                    let imm_address = self.get_imm_u64_from_str(labels, regs, current_offset)?;
+                    self.process_rel_fun64(imm_address, pc as u64)
+                }
+                else {
+                    let imm_address = self.get_imm_from_str(labels, regs, current_offset)?;
+                    self.process_rel_fun(imm_address, pc)
+                }
             }
             else {
                 let imm_address = self.get_imm_asi64_from_str(labels, regs, current_offset)?;
@@ -1823,6 +1829,18 @@ impl Instruction {
         else {
             Ok(0)
         }
+    }
+
+    fn use_rel_fun64(&self) -> bool {
+        self.rel_fun
+            .as_ref()
+            .map(|x| {
+                matches!(
+                    x.to_lowercase().as_str(),
+                    "%hi20" | "%lo12" | "%c1" | "%c2" | "%c3"
+                )
+            })
+            .unwrap_or(false)
     }
 
     fn pcrel_lo(imm_address:u32, pc:u32) -> u32 {
@@ -1836,6 +1854,36 @@ impl Instruction {
         // Add 0x800 to round properly when the low 12 bits overflow into high bits
         let r = (((offset + 0x800) >> 12) & 0xFFFFF) as i32;
         r as u32
+    }
+
+    fn process_rel_fun64(&self, imm_address:u64, _pc:u64) -> Result<u32, AsmError> {
+        let hi32 = (imm_address >> 32) as u32;
+        if let Some(f) = self.rel_fun.as_ref() {
+            match f.to_lowercase().as_str() {
+                "%hi20" => { Ok(hi32.wrapping_add(0x800) >> 12) }
+                "%lo12" => { Ok(hi32 & 0xfff) }
+                "%c1" => { 
+                    let r = ((imm_address >> 21) & 0x7ff) as u32; 
+                    Ok(r)
+                }
+                "%c2" => {
+                    let r = ((imm_address >> 10) & 0x7ff) as u32;
+                    Ok(r)
+                }
+                "%c3" => {
+                    let r = (imm_address & 0x3ff) as u32;
+                    Ok(r)
+                }
+                _ => {
+                    let err_str = format!("Cannot process operator {f} for imm process");
+                    error_string(err_str.to_string());
+                    Err(AsmError::NotSupportedOperation((file!(), line!()).into(), err_str))
+                }
+            }
+        }
+        else {
+            Ok(imm_address as u32)
+        }
     }
 
     fn process_rel_fun(&self, imm_address:u32, pc:u32) -> Result<u32, AsmError> {
@@ -1934,6 +1982,42 @@ impl Instruction {
                     }
                 }
                 Self::imm_str_to_u32(&imm)
+            }
+        }
+    }
+
+    pub (crate) fn get_imm_u64_from_str(&self, labels:&LabelOffsetTable, regs:&Register, offset:usize) -> Result<u64, AsmError> {
+        let imm = self.get_imm().unwrap().to_string_option().unwrap();
+        if imm.is_empty() {
+            Ok(0)
+        }
+        else if labels.contains_key(&imm) {
+            if let Some(v) = labels.get_offset(&imm, offset, None) {
+                Ok(v as u64)
+            }
+            else {
+                let err_str = format!("cannot get label '{imm}' address from label table");
+                error_string(err_str.clone());
+                Err(AsmError::NoFound((file!(), line!()).into(), err_str))
+            }
+        }
+        else if regs.is_register_name(imm.clone()) {
+            regs.get_register_value(Some(&imm)).map(|x| x as u64)
+        }
+        else {
+            if self.use_rel_fun64() && get_i64_from_str(&imm).is_err() {
+                if let Ok(v) = get_f64_from_str(&imm) {
+                    return Ok(v.to_bits());
+                }
+            }
+
+            if let Ok(v) = get_u64_from_str(&imm) {
+                Ok(v)
+            }
+            else {
+                get_i64_from_str(&imm)
+                    .map(|v| v as u64)
+                    .map_err(|_| AsmError::ConversionFailed((file!(), line!()).into(), format!("convert {imm} to u64 failed")))
             }
         }
     }
