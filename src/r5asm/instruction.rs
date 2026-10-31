@@ -1157,11 +1157,39 @@ impl Instruction {
                         if replace_pseudo {
                             match inc_name_low_case {
                                 "j" => {
-                                    let (inc_name, inc_type) = Self::get_inc_and_inc_type("jal")?;
-                                    let mut r = Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
-                                    r.r0_name = Some("x0".to_string());
-                                    r.set_imm_from_pair(p);
-                                    Ok([r].to_vec())
+                                    if p.as_rule() == Rule::var_name {
+                                        let (inc_name, inc_type) = Self::get_inc_and_inc_type("jal")?;
+                                        let mut r = Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
+                                        r.r0_name = Some("x0".to_string());
+                                        r.set_imm_from_pair(p);
+                                        Ok([r].to_vec())
+                                    }
+                                    else {
+                                        let imm_value = pair_to_i64(p)?;
+                                        if Self::is_within_1m(imm_value) {
+                                            let (inc_name, inc_type) = Self::get_inc_and_inc_type("jal")?;
+                                            let mut r = Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
+                                            r.r0_name = Some("x0".to_string());
+                                            r.set_imm_from_pair(p);
+                                            Ok([r].to_vec())
+                                        }
+                                        else {
+                                            let (inc_name, inc_type) = Self::get_inc_and_inc_type("auipc")?;
+                                            let mut hi = Self::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
+                                            hi.r0_name = Some("t0".to_string());
+                                            hi.set_imm_from_pair(p);
+                                            hi.rel_fun = Some("%pcrel_hi".to_string());
+
+                                            let (inc_name2, inc_type2) = Self::get_inc_and_inc_type("jalr")?;
+                                            let mut lo = Self::new(inc_name2, inc_type2, BasicInstructionExtensions::BaseIntegerInstructions);
+                                            lo.r0_name = Some("x0".to_string());
+                                            lo.r1_name = Some("t0".to_string());
+                                            lo.set_imm_from_pair(p);
+                                            lo.rel_fun = Some("%pcrel_lo".to_string());
+
+                                            Ok([hi, lo].to_vec())
+                                        }
+                                    }
                                 }
                                 "call" => {
                                     if p.as_rule() == Rule::var_name {

@@ -383,6 +383,29 @@ impl AsmProgram {
                 if let Some(label) = inc.get_imm().and_then(|x| x.get_value()) {
                     if let Some(target_offset) = label_offset.get_single_label_offset(&label, Some(item.get_offset())) {
                         let offset = target_offset as i64 - current_offset as i64;
+                        if name == "jal" && !Instruction::is_within_1m(offset) {
+                            let rd = inc.get_r0().map(|r| r.as_str()).unwrap_or("x0");
+                            let base_reg = if rd == "x0" { "t0" } else { rd };
+
+                            let (inc_name, inc_type) = Instruction::get_inc_and_inc_type("auipc")?;
+                            let mut hi = Instruction::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
+                            hi.set_r0_value(base_reg);
+                            hi.set_imm_value(&label);
+                            hi.rel_fun = Some("%pcrel_hi".to_string());
+
+                            let (inc_name2, inc_type2) = Instruction::get_inc_and_inc_type("jalr")?;
+                            let mut lo = Instruction::new(inc_name2, inc_type2, BasicInstructionExtensions::BaseIntegerInstructions);
+                            lo.set_r0_value(if rd == "x0" { "x0" } else { rd });
+                            lo.set_r1_value(base_reg);
+                            lo.set_imm_value(&label);
+                            lo.rel_fun = Some("%pcrel_lo".to_string());
+
+                            return Ok(vec![
+                                SectionItem2::new(0, SectionItem::Instruction(hi)),
+                                SectionItem2::new(0, SectionItem::Instruction(lo)),
+                            ]);
+                        }
+
                         let (inc_name, inc_type) = Instruction::get_inc_and_inc_type(&name)?;
                         let mut r = Instruction::new(inc_name, inc_type, BasicInstructionExtensions::BaseIntegerInstructions);
                         r.set_r0_value(inc.get_r0().unwrap());

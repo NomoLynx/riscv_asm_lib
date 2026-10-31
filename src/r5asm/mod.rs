@@ -191,6 +191,39 @@ pub (self) mod tests {
     }
 
     #[test]
+    fn test_j_pseudo_uses_long_jump_encoding_for_far_targets() {
+        let mut config = code_gen_config::CodeGenConfiguration::default();
+
+        let short = instruction::Instruction::from_string("j 1024", &mut config)
+            .expect("short jump should stay as a single jal");
+        assert_eq!(short.len(), 1);
+        assert_eq!(short[0].get_instruction_name(), "jal");
+
+        let far = instruction::Instruction::from_string("j 2097152", &mut config)
+            .expect("far jump should expand to auipc+jalr");
+        assert_eq!(far.len(), 2);
+        assert_eq!(far[0].get_instruction_name(), "auipc");
+        assert_eq!(far[1].get_instruction_name(), "jalr");
+        assert_eq!(far[0].get_r0().map(String::as_str), Some("t0"));
+        assert_eq!(far[1].get_r0().map(String::as_str), Some("x0"));
+        assert_eq!(far[1].get_r1().map(String::as_str), Some("t0"));
+    }
+
+    #[test]
+    fn test_j_pseudo_keeps_label_target_symbolic() {
+        let mut config = code_gen_config::CodeGenConfiguration::default();
+        let label_jump = instruction::Instruction::from_string("j exit", &mut config)
+            .expect("label jump should parse");
+        assert_eq!(label_jump.len(), 1);
+        assert_eq!(label_jump[0].get_instruction_name(), "jal");
+        assert_eq!(label_jump[0].get_r0().map(String::as_str), Some("x0"));
+        assert_eq!(
+            label_jump[0].get_imm().and_then(|imm| imm.get_value()),
+            Some("exit".to_string())
+        );
+    }
+
+    #[test]
     fn test_zba_instruction_parser_acceptance() {
         let cases = [
             "add.uw x1, x2, x3",
