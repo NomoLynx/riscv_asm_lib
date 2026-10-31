@@ -1,198 +1,46 @@
-
 # riscv_asm_lib
 
-A RISC-V assembler and linker library written in Rust, capable of parsing RISC-V assembly source text and producing ELF output for both executables and shared libraries.
+A Rust library for assembling RISC-V assembly source into ELF outputs and for building small firmware, runtime, and linker-oriented projects from both single-file and multi-file assembly layouts.
 
-This project uses a diagram-to-code workflow and needs [Rust Macro Internal](https://github.com/NomoLynx/rust_macro_internal) to compile. If you want to view the diagrams, install a Markdown and Mermaid viewer in your IDE (for example, VS Code).
+This crate is designed around a practical, project-focused assembler workflow: parse instructions, expand pseudo-ops, apply linker data, and emit either executables or shared objects. It is also used as a code-generation back end for state-machine and data-driven project setups.
 
-## Recent Updates
+This project uses a diagram-to-code workflow and depends on [rust_macro_internal](https://github.com/NomoLynx/rust_macro_internal) during the build. If you want to inspect the project diagrams, install a Markdown/Mermaid previewer in your editor (for example VS Code).
 
-- **2026-10-25**: Refreshed the project documentation to call out the current feature set, including multi-file assembly projects, Mermaid state-machine code generation, Markdown/INI-driven data sections, bit-manip support, and shared-library output.
-- **2026-10-07**: Added Mermaid-driven state machine code generation. State diagrams can be translated into assembly dispatch code with per-state transition handlers, event IDs, and jump-table dispatch logic.
-- **2026-10-03**: Added INI-driven multi-source assembly support. The assembler now accepts multiple `.s` files via `ASMSolution` and relative path resolution from the INI file folder. Dedicated entry points are available for INI-based builds while the original single-file path-based build API remains unchanged.
-- **2026-03-29**: Added and documented RV64 Zbb word-form instructions (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
-- **2026-03-29**: Added explicit bit-manip instruction test coverage references for `zbb_core.s`, `zbb_word.s`, and `zbs_extra.s`.
+## Latest status
 
----
+The current codebase includes the following updates and fixes:
 
-## Feature Highlights
-
-The assembler is now a practical toolbox for building small firmware and system-software projects from RISC-V assembly, not just a parser for isolated directives:
-
-- **Multi-file project builds** — `ASMSolution` and INI-driven layout let you assemble an entire project from a root config plus multiple `.s` source files.
-- **Markdown and INI data integration** — `.data.md` and structured data helpers let you generate `.data` sections from table-based definitions without hand-editing raw binary layouts.
-- **Mermaid-driven code generation** — state diagrams can be converted into event/state constants and dispatcher code, which is useful for workflow and control logic.
-- **Extended bit-manip support** — `Zba`, `Zbb`, and `Zbs` instruction families are supported, including RV64 word-form encodings like `clzw`, `ctzw`, and `cpopw`.
-- **Shared-library and ELF output** — the library can emit standard ELF executables or shared-object targets with PLT-backed dynamic structures.
-- **C-friendly integration** — the crate exposes a C-compatible library interface for FFI-based workflows and toolchains.
+- **2026-10-25**: README and API docs refreshed to reflect the shipping feature set: multi-file builds, `INI` and Markdown-driven data integration, Mermaid state-machine generation, bit-manip support, and shared-library output.
+- **2026-10-07**: Added Mermaid-driven state-machine code generation from a `stateDiagram-v2` input.
+- **2026-10-03**: Added INI-driven multi-source project builds via `ASMSolution`, with relative path resolution from the INI folder and compatibility with the original single-file assembler APIs.
+- **2026-03-29**: Added RV64 `Zbb` word-form support (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
+- **Recent bug fixes**: improved multi-file path handling, data-file discovery, dynamic/shared-library output behavior, and symbol/linking edge cases that affected larger assembly projects.
 
 ---
 
-## Features
+## What this library can do
 
-- **PEG-based parser** — assembly source is parsed with [pest](https://pest.rs/) using the `r5asm.pest` grammar, giving precise, structured parse trees.
-- **Full section model** — `.text`, `.data`, and `.rodata` sections are modelled and emitted into standard ELF sections.
-- **ELF output** — produces RISC-V ELF files (executable or shared object).
-- **Pseudo-instruction expansion** — high-level pseudo-instructions are expanded to real machine instructions during a second-round pass.
-- **Compact (C-extension) optimisation** — optionally converts eligible instructions to the 16-bit compressed encoding.
-- **Macro instructions** — user-defined macro instructions are stored in `CodeGenConfiguration` and expanded at assembly time.
-- **Mermaid state-machine generation** — Mermaid state diagrams can be compiled into assembly dispatch logic with event constants, state IDs, and jump-table handlers for each transition.
-- **Customized data sections** — `.data` section content can be defined in Markdown tables and ini file (`.data.md` files) using the `md_data` module.
-- **Dynamic / shared-library support** — PLT stubs (plt0 / pltn) and ELF dynamic structures are generated for shared-library builds.
-- **External symbol support** — symbols referenced but not defined in the current translation unit are forwarded as external relocations.
-- **C-compatible library** — built as both `rlib` and `cdylib`, allowing the assembler to be called from C/C++ FFI.
+- Parse and validate RISC-V assembly text using a Pest grammar.
+- Emit ELF binaries for executables and shared libraries.
+- Expand pseudo-instructions into real instructions during a second-round pass.
+- Support multi-file assembly projects through `ASMSolution` and INI configuration.
+- Read Markdown data tables into `.data` sections with `.data.md` helpers.
+- Generate assembly from Mermaid state diagrams.
+- Support `Zba`, `Zbb`, `Zbs`, `F`, `D`, and main integer/CSR instruction families.
+- Expose a C-friendly crate interface for embedding from native tooling.
 
 ---
 
-## Supported RISC-V Extensions
+## Quick start
 
-The assembler supports the following extension families (instruction names are defined by `r5asm.pest` and resolved by the opcode table):
+### Build the crate
 
-- **RV32I (base integer)**
-    - Integer arithmetic, logic, branches, jumps, loads/stores, fence/system forms.
-- **RV64I (and partial RV128-style forms used by this project)**
-    - 64-bit integer load/store and W-suffixed arithmetic/shift operations.
-- **RVC (C extension, compressed 16-bit)**
-    - Compressed integer instructions and compressed floating load/store forms.
-- **M extension**
-    - Integer multiply/divide/remainder instructions (32-bit and 64-bit variants).
-- **A extension**
-    - Atomic instructions for word/doubleword forms (LR/SC and AMO families).
-- **Zba (bit-manip address generation)**
-    - Supported forms include `add.uw`, `sh1add`, `sh2add`, `sh3add`, `slli.uw`, and RV64 `*.uw` shift-add variants.
-- **Zbb (bit-manip basic/core)**
-    - Supported forms include `andn`, `orn`, `xnor`, `rol`, `ror`, `rori`, `clz`, `ctz`, `cpop`, `sext.b`, `sext.h`, `orc.b`, `rev8`, `zext.h`, `min`, `minu`, `max`, and `maxu`.
-    - RV64 word forms are also supported: `clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, and `roriw`.
-- **Zbs (bit-manip single-bit instructions)**
-    - Supported forms include `bclr`, `bclri`, `bext`, `bexti`, `binv`, `binvi`, `bset`, and `bseti`.
-- **F extension (single-precision floating point)**
-    - Supported, including load/store (`FLW`/`FSW`), arithmetic (`FADD.S`, `FSUB.S`, `FMUL.S`, `FDIV.S`), comparisons, classify, move, and convert instructions.
-- **D extension (double-precision floating point)**
-    - Supported, including load/store (`FLD`/`FSD`), arithmetic (`FADD.D`, `FSUB.D`, `FMUL.D`, `FDIV.D`), comparisons, classify, move, and convert instructions.
-- **Privileged/CSR instruction group**
-    - CSR read/write forms and selected privileged/system operations.
-- **Pseudo-instructions and project-specific TT extensions**
-    - Expanded during assembly second-round processing.
-
-### Floating-point Data Directives
-
-- `.float` and `.double` directives are supported for data emission.
-- Floating pseudo stack helpers are available (for example `pushf32`/`popf32` and `pushf64`/`popf64`).
-
-### Notes
-
-- This library accepts a practical subset used by the project and does not claim full ratified coverage of every optional RISC-V extension variant.
-- Extension support is best validated by checking `src/r5asm/r5asm.pest` and `src/r5asm/opcode/opcode.rs` together.
-
-### Mermaid state-machine code generation
-
-The assembler includes a small code-generation path for Mermaid state diagrams. A diagram such as:
-
-```mermaid
-stateDiagram-v2
-    [*] --> Idle
-    Idle --> Running: start
-    Running --> Idle: stop
-    Running --> Fault: error
-    Fault --> Idle: reset
+```bash
+cd CLR/riscv_asm_lib
+cargo build
 ```
 
-is translated into assembly that emits:
-
-- `EVENT_*` constants for each trigger event
-- `STATE_*` constants for each state value
-- a state jump table in `.data`
-- a dispatcher in `.text` that selects the current state handler and jumps to the matching transition block
-
-The generated logic follows the same pattern as the state-machine templates in `src/templates/state_machine.template` and `src/templates/state_machine_event.template`: the machine keeps a current state ID in a register, compares the incoming event against the state's transition list, updates the next state, and dispatches to the next handler.
-
-This is useful for encoding workflow logic directly from a visual state diagram instead of hand-writing a large nested `if`/`switch` sequence in assembly.
-
-### Pseudo-instruction note: `li rd, <imm>`
-
-- `li` is the standard load-immediate pseudo-instruction.
-- In `li rd, <imm>`, `<imm>` means an immediate integer value or constant expression.
-- In this project, the `li` expansion currently assumes the target machine is **64-bit** (`RV64`).
-- Large immediate values may therefore be expanded using RV64-oriented instruction sequences.
-
-Example:
-
-```asm
-li a0, 123
-li t0, 0x123456789abcdef0
-```
-
-### Instruction Test Coverage (Bit-Manip)
-
-Recent instruction additions in the bit-manip groups are covered by dedicated assembly tests:
-
-- `../test_data/test_r5asm/unit_tests/zbb_core.s` for core Zbb instructions.
-- `../test_data/test_r5asm/unit_tests/zbb_word.s` for RV64 Zbb word forms (`clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, `roriw`).
-- `../test_data/test_r5asm/unit_tests/zbs_extra.s` for extended Zbs instruction checks.
-
----
-
-## Crate Layout
-
-```
-riscv_asm_lib/
-├── Cargo.toml
-└── src/
-    ├── lib.rs                  # crate root – re-exports r5asm module
-    └── r5asm/
-        ├── mod.rs              # module root; global flags OPTIMIZE_CODE_GEN / OPTIMIZE_TO_COMPACT_CODE
-        ├── r5asm.pest          # PEG grammar for RISC-V assembly
-        ├── r5asm_pest.rs       # generated pest types, Rule enum, helper functions
-        ├── assembler.rs        # parse_asm() / parse_asm_use_default_config() entry points
-        ├── asm_program.rs      # AsmProgram – top-level IR; owns Vec<Section>
-        ├── asm_solution.rs     # ASMSolution – container for multi-file assembly projects
-        ├── asm_error.rs        # AsmError enum and AsmErrorSourceFileLocation
-        ├── code_gen_config.rs  # CodeGenConfiguration – drives the assembler/linker
-        ├── linker_config.rs    # LinkerConfig – virtual address, library mode, soname
-        ├── instruction.rs      # Instruction – single assembly instruction IR
-        ├── r5inc.rs            # R5Inc – bit-packed machine-code word (derived from mermaid spec)
-        ├── r5inc.mermaid       # bit-field layout diagram used to auto-generate R5Inc
-        ├── machinecode.rs      # MachineCode helper
-        ├── opcode/             # OpCode table (CSV-driven)
-        ├── register.rs         # Register enum
-        ├── imm.rs / imm_macro.rs  # Immediate value types and macros
-        ├── directive.rs        # Assembly directives (.equ, .global, …)
-        ├── section.rs          # Section – holds a list of SectionItems
-        ├── elf_file/           # ELF file/header/code-section/data-section builders
-        ├── elf_section/        # ELF section metadata (NoteSection, …)
-        ├── label_offset/       # Label tables and offset resolution
-        ├── external_label/     # External symbol tracking
-        ├── dynamic_structure/  # PLT/GOT dynamic structures for shared libs
-        ├── macro_instruction/  # Macro instruction definitions and archive
-        ├── alignment/          # Alignment helpers
-        ├── compact_inc.rs      # C-extension compact instruction conversion
-        ├── build_snippet_parameters.rs
-        ├── basic_instruction_extensions.rs
-        ├── md_data.rs          # Markdown table → .data section converter
-        ├── state_machine_code.rs # Mermaid state graph → assembly dispatcher codegen
-        ├── templates/          # state machine code templates
-        └── traits/             # Shared traits (SectionSizeTrait, ToMarkdown, …)
-```
-
----
-
-## Dependencies
-
-| Crate | Role |
-|---|---|
-| `core_utils` (internal) | Filesystem helpers, debug utilities, number utilities |
-| `parser_lib` (internal) | Expression language (`ExprValue`, `ExprError`), Markdown parser |
-| `rust_macro` (internal) | `#[derive(Accessors)]` and other proc-macros |
-| `rust_macro_internal` (internal) | `#[packet_bit_vec]` proc-macro (drives `R5Inc`) |
-| `pest` / `pest_derive` | PEG parsing framework |
-| `libc` | C FFI types |
-| `chrono` | Timestamp generation in generated files |
-
----
-
-## Quick Start
-
-### Parse assembly from a string
+### Parse a simple assembly fragment
 
 ```rust
 use riscv_asm_lib::r5asm::assembler::parse_asm_use_default_config;
@@ -217,19 +65,29 @@ use riscv_asm_lib::r5asm::{
 };
 
 let mut config = CodeGenConfiguration::default();
-config.reset_replace_pseudo_code();   // expand pseudo-instructions
-config.reset_generate_bin_and_code(); // emit machine code bytes
+config.reset_replace_pseudo_code();
+config.reset_generate_bin_and_code();
+
+let src = r#"
+.text
+.global _start
+_start:
+    li a0, 42
+    ecall
+"#;
 
 let program = parse_asm(src, &mut config).expect("assembly failed");
 ```
 
-### Multi-file project (ASMSolution)
+---
 
-The assembler supports building from more than one assembly source file through `ASMSolution` and the INI-driven loader. This is useful when a project is split across multiple `.s` modules such as boot code, driver stubs, and application code.
+## Multi-file project builds
 
-The original single-file builder remains available and unchanged for direct `.s` builds. For INI-driven project builds, the library exposes dedicated APIs that load the project definition from a configuration file and then call the multi-file solution build path.
+The assembler supports building more than one assembly source file through `ASMSolution` and INI-based project configuration.
 
-Example INI for a multi-file project:
+The direct single-file build path remains available, and the project also exposes dedicated initialization entry points for INI-driven flows.
+
+Example `project.ini`:
 
 ```ini
 [asm]
@@ -248,98 +106,24 @@ soname = firmware
 needed_libs = libxyz.so, libfoo.so
 ```
 
-This file can live in the same folder as the `.s` files. Relative paths are resolved relative to the INI file itself, so a project can be built by pointing at the folder-level INI instead of passing a single main file directly.
+The relevant APIs are:
 
-The INI-based build entry points are:
-
+- `load_asm_solution_from_ini(ini_file_path)`
 - `build_asm_solution_from_ini(ini_file_path)`
 - `build_asm_from_ini(ini_file_path, output_file_name)`
-
-Output naming follows linker mode:
-
-- `is_build_lib = false` → `<main>.elf`
-- `is_build_lib = true` → `<main>.so`
-
-The older direct build path remains:
-
 - `build_asm(file_path, output_file_name, config)`
 
-The library also supports per-source data files in `.data.md` or `.data` folders alongside the assembly source, as shown below:
+Relative paths are resolved from the INI file location, which makes it easy to assemble a project directory without manually flattening every source path.
 
-![Assembly File with data folder](./doc/asm_dir.png)
-![Assembly file with md file](./doc/asm_md.png)
-
----
-
-## Key Types
-
-### `AsmProgram`
-
-The top-level intermediate representation produced by the parser. Contains a `Vec<Section>` and is responsible for:
-
-- Label resolution across all sections.
-- Second-round pseudo-instruction expansion (`second_round()`).
-- ELF file generation.
-
-### `CodeGenConfiguration`
-
-Controls the entire assembly pipeline:
-
-| Field | Default | Purpose |
-|---|---|---|
-| `replace_pseudo_code` | `true` | Expand pseudo-instructions to real instructions |
-| `generate_bin_and_code` | `false` | Emit raw binary machine code |
-| `build_target` | `0` | Target architecture variant |
-| `linker_config` | `LinkerConfig::default()` | Linker settings |
-| `note_section` | default | ELF `.note` section content |
-| `marco_instruction_archive` | empty | User-defined macro instructions |
-| `external_function_versions` | empty | Versioned external symbol table |
-
-### `LinkerConfig`
-
-| Field | Default | Purpose |
-|---|---|---|
-| `virutual_address_start` | `0x8100_0000` | Base virtual address for the executable |
-| `is_build_lib` | `false` | Build as shared library instead of executable |
-| `soname` | `None` | SONAME for the shared object |
-| `needed_libs` | empty | Extra `DT_NEEDED` libraries (comma-separated in INI) |
-
-When `is_build_lib` is enabled, dynamic ELF output uses a shared-library style entry (`e_entry = 0`) and emits a `.so` file name by default.
-
-### `AsmError`
-
-Structured error type with source location (`file!()`, `line!()`):
-
-```
-AsmError::GeneralError(location, message)
-AsmError::ParsingConversionError(location, message)
-AsmError::NoFound(location, message)
-AsmError::NotSupportedOperation(location, message)
-AsmError::IOError
-… (and more variants)
-```
+When `is_build_lib = false`, output naming follows the executable flow (`<main>.elf`). When `is_build_lib = true`, the library emits a shared-object style result (`<main>.so`).
 
 ---
 
-## Global Optimisation Flags
+## Markdown and structured data sections
 
-Two `static mut` flags can be set before calling the assembler to enable global optimisations:
+`read_data_md()` and the surrounding data-loader helpers let you generate `.data` blocks from Markdown tables, instead of hand-writing raw binary layouts.
 
-```rust
-// Enable general code-generation optimisations
-unsafe { riscv_asm_lib::r5asm::OPTIMIZE_CODE_GEN = true; }
-
-// Convert eligible instructions to 16-bit RISC-V C-extension encoding
-unsafe { riscv_asm_lib::r5asm::OPTIMIZE_TO_COMPACT_CODE = true; }
-```
-
-> **Safety**: These flags are intended to be set once at program startup before any concurrent assembly work begins.
-
----
-
-## Markdown Data Sections
-
-Data section content can be described in Markdown tables inside a `.data.md` file placed alongside the assembly source. The `assembler::read_data_md()` function loads the file and converts the tables into a `.data` assembly block that is merged into the program.
+Example markdown:
 
 ```markdown
 | label   | type | value |
@@ -348,17 +132,116 @@ Data section content can be described in Markdown tables inside a `.data.md` fil
 | msg_ptr | word | 0     |
 ```
 
+This can be stored next to the `.s` file as a matching `.data.md` entry and merged into the assembled program automatically.
+
+This is useful for keeping tables, constants, and payload data close to the code that uses them.
+
 ---
 
-## Data Files
+## Mermaid state-machine generation
+
+The assembler includes a Mermaid code-generation path for finite-state machine logic.
+
+Example diagram:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Running: start
+    Running --> Idle: stop
+    Running --> Fault: error
+    Fault --> Idle: reset
+```
+
+The generator can emit:
+
+- `EVENT_*` constants
+- `STATE_*` constants
+- a `.data` jump table
+- a `.text` dispatcher that dispatches based on the current state and incoming event
+
+This is designed to help turn visual workflow/state diagrams into assembly logic without hand-writing a large nested control-flow structure.
+
+---
+
+## Supported instruction families
+
+This assembler supports a practical, project-oriented subset of the RISC-V instruction set as defined by the grammar in `src/r5asm/r5asm.pest`. The current implementation covers the following families:
+
+- **RV32I / RV64I / RV128-oriented integer subset** — base integer arithmetic, logic, shifts, branches, loads/stores, `jal`/`jalr`, and RV64/128-style widened forms such as `addiw`, `addw`, `slliw`, `sllw`, and `sext.w`
+- **RVC** — compressed 16-bit instructions in the project-supported subset
+- **M** — multiply/divide/remainder operations, including `mul`, `div`, `rem`, and RV64 word variants such as `mulw`, `divw`, and `remw`
+- **A** — atomic operations including `lr.w`, `sc.w`, `amoswap.*`, `amoadd.*`, `amoxor.*`, `amoand.*`, `amoor.*`, `amomin.*`, and `amomax.*`, plus RV64 128-bit atomic forms
+- **Zba** — address-generation instructions such as `sh1add`, `sh2add`, `sh3add`, `add.uw`, `sh1add.uw`, `sh2add.uw`, `sh3add.uw`, and `slli.uw`
+- **Zbb** — basic bit-manip operations including `andn`, `orn`, `xnor`, `rol`, `ror`, `rori`, `clz`, `ctz`, `cpop`, `sext.b`, `sext.h`, `orc.b`, `rev8`, `zext.h`, `min`, `minu`, `max`, `maxu`, and RV64 word forms such as `clzw`, `ctzw`, `cpopw`, `rolw`, `rorw`, and `roriw`
+- **Zbc** — carryless multiply operations in the supported subset
+- **Zbs** — single-bit operations such as `bclr`, `bext`, `binv`, `bset`, and their immediate forms (`bclri`, `bexti`, `binvi`, `bseti`)
+- **Zicond** — `czero.eqz` and `czero.nez`
+- **K crypto** — supported subset of cryptographic instructions including `pack`, `packh`, `packw`, `brev8`, `zip`, `unzip`, `aes64*`, and `sha*`/`sm3*` variants that are wired into the grammar
+- **F / D** — single- and double-precision floating-point instructions including loads/stores, arithmetic, comparisons, class, conversion, and fused multiply-add forms
+- **RVV (vector extension)** — project-supported vector setup and arithmetic/load/store forms in the grammar
+- **CSR / privileged** — CSR access instructions (`csrrw`, `csrrs`, `csrrc`, `csrrwi`, `csrrsi`, `csrrci`) and privileged/system forms like `wfi`, `ecall`, `ebreak`, `eret`, `sfence.vm`, and related trap/interrupt helpers
+- **Pseudo-instructions** — expanded during the second-round assembler pass
+
+### Floating-point data directives
+
+- `.float` and `.double` directives are supported for data emission.
+- Floating-point pseudo helpers such as `pushf32` / `popf32` and `pushf64` / `popf64` are available.
+
+> Note: The project implements the subset needed by its toolchain and system-software use cases, rather than guaranteeing full coverage of every optional RISC-V extension variant.
+
+---
+
+## Public API overview
+
+### `parse_asm_use_default_config(input)`
+
+Parses text with the default configuration and performs the follow-on second/third-round assembly passes needed by the built-in project flow.
+
+### `parse_asm(input, config)`
+
+Parses assembly text with a caller-supplied `CodeGenConfiguration`, which controls pseudo-op expansion, binary generation, linker parameters, and macro behavior.
+
+### `CodeGenConfiguration`
+
+Main configuration object for the assembly pipeline.
+
+### `AsmProgram`
+
+The parsed assembly program model; it tracks sections, labels, relocations, and the later ELF emission path.
+
+### `LinkerConfig`
+
+Controls ELF output such as virtual address layout, shared-library mode, `SONAME`, and dynamic `DT_NEEDED` entries.
+
+---
+
+## Global optimization flags
+
+The library exposes global flags for optimization toggles that can be set once at startup before assembly begins:
+
+```rust
+unsafe { riscv_asm_lib::r5asm::OPTIMIZE_CODE_GEN = true; }
+unsafe { riscv_asm_lib::r5asm::OPTIMIZE_TO_COMPACT_CODE = true; }
+```
+
+These are intended for program-wide configuration and are meant to be set before concurrent assembly work begins.
+
+---
+
+## Data files and templates
+
+The crate includes a few generated or template assets used by the assembler:
 
 | File | Purpose |
 |---|---|
 | `src/r5asm/opcode/opcode.csv` | RISC-V opcode encoding table |
 | `src/r5asm/opcode/opcode_col.csv` | Opcode column metadata |
-| `src/r5asm/r5inc.mermaid` | Bit-field layout that drives `R5Inc` code generation |
-| `src/data/dynamic_plt0.s` | Template PLT stub (plt[0]) for dynamic linking |
-| `src/data/dynamic_pltn.s` | Template PLT stub (plt[n]) for dynamic linking |
+| `src/r5asm/r5inc.mermaid` | Mermaid definition for the `R5Inc` data model |
+| `src/data/dynamic_plt0.s` | PLT stub template for dynamic linking |
+| `src/data/dynamic_pltn.s` | Additional PLT stub template for dynamic linking |
+| `src/templates/state_machine.template` | State-machine assembly template |
+| `src/templates/state_machine_event.template` | Event-driven state-machine template |
 
 ---
 
