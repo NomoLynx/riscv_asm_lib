@@ -23,7 +23,7 @@ use super::elf_file::*;
 use super::machinecode::MachineCode;
 use super::round_to_usize;
 use super::opcode::OpCode;
-use super::r5asm_pest::{EquTable, InstructionRegisterName, InstructionTypes, Rule, SectionItem, SectionItem2, from_pair_vec_null_fn_template};
+use super::r5asm_pest::{EquTable, InstructionRegisterName, InstructionTypes, Rule, SectionItem, SectionItem2};
 use super::register::Register;
 use super::section::Section;
 use super::traits::{SectionSizeTrait, ToMarkdown};
