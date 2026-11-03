@@ -431,7 +431,8 @@ basic_pseudoinstructions = {
     #inc_name = pseudoinstructions_csr_rs_incs ~ csr ~ "," ~ rs |
     #inc_name = pseudoinstructions_csr_fr_rd_incs ~ (rd ~ ",")? ~ rs |
     #inc_name = pseudoinstructions_csr_rd_rs_incs ~ (rd ~ ",")? ~ rs |
-    #inc_name = pseudoinstructions_save_incs ~ rs ~ "," ~ rs1
+    #inc_name = pseudoinstructions_save_incs ~ rs ~ "," ~ rs1 | 
+    #inc_name = pseudoinstructions_clear_incs ~ rs
 }
 
 pseudoinstructions_load_incs = { (^"la" | ^"lla" | ^"lga" | ^"lbu" | ^"lhu" | ^"lwu" | ^"lb" | ^"lh" | ^"lw" | ^"ld" | ^"sb" | ^"sh" | ^"sw" | ^"sd") }
@@ -457,6 +458,7 @@ pseudoinstructions_csr_rd_incs = { (^"fsrmi" | ^"fsflagsi") }
 pseudoinstructions_csr_rs_incs = { (^"csrw" | ^"csrs" | ^"csrc") }
 pseudoinstructions_csr_fr_rd_incs = { (^"frcsr" | ^"frrm" | ^"frflags" | ^"fssr") }    //fssr will be replaced by frcsr
 pseudoinstructions_csr_rd_rs_incs = { (^"fscsr" | ^"fsrm" | ^"fsflags" | ^"frsr") }    //frsr will be replaced by fscsr
+pseudoinstructions_clear_incs = { ^"clear" }
 
 pseudoinstructions_save_incs = { (^"save" | ^"restore") }     //save the register to memory or restore from memory
 

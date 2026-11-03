@@ -32,6 +32,7 @@ this file contains macro instruction for RiscV asm. Please make sure the asm cod
 | pushby | [push by](#push-by) |
 | popby | [pop by](#pop-by) |
 | inc | [inc](#inc) |
+| clear | [clear](#clear) |
 
 ## exit the code
 
@@ -268,4 +269,12 @@ increase the register value by a const, this constant is between -2047 to 2048.
 
 ```asm
     addi $1, $1, $2
+```
+
+## clear
+
+clear the register
+
+```asm
+    add $1, x0, x0
 ```

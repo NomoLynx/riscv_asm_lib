@@ -80,7 +80,9 @@ fn validate_markdown_instructions_are_defined(markdown_names: &[String], pest_so
         .iter()
         .filter(|name| !pest_names.contains(name.as_str()))
     {
-        let err_msg = format!("macro instruction '{missing_name}' NOT defined in r5asm.pest\n");
+        let current_time = chrono::Local::now();
+        let current_time_string = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
+        let err_msg = format!("[{current_time_string}] macro instruction '{missing_name}' NOT defined in r5asm.pest\n");
         
         match append_to_file_from_path(&warning_file_path, &err_msg) {
             Ok(_) => {}
