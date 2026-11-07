@@ -34,10 +34,10 @@ fn extract_string_literals(expression: &PestExpression) -> Vec<String> {
 
     for atom in expression.get_all_atoms() {
         match atom {
-            PestAtom::String(_, value, _) => {
+            PestAtom::String(_, _, value, _) => {
                 values.push(value.trim_matches('"').to_string());
             }
-            PestAtom::Expression(_, nested, _) => {
+            PestAtom::Expression(_, _, nested, _) => {
                 values.extend(extract_string_literals(nested));
             }
             _ => {}
