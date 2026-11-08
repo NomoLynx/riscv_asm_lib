@@ -358,7 +358,7 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
         let folder = get_additional_file_and_folder(file_path).unwrap().0;
         let files = get_files_in_folder(&folder, ASM_INI_FILE_EXTENSION);
         for file in files {
-            let data = parser_lib::ini::ini_file_to_asm_data_code(&file)
+            let data = ini_file_to_asm_data_code(&file)
                 .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("ini file to asm code wrong")))?;
             input = format!("{input}\r\n\r\n{}", data);
             let mut part1 = parse_asm(&data, config)?;
