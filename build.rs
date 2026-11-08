@@ -29,6 +29,8 @@ fn parse_macro_instruction_names(markdown: &str) -> Vec<String> {
         .collect()
 }
 
+/// Extract all string literals from the given PestExpression.
+/// Returns a vector of string literals found within the expression.
 fn extract_string_literals(expression: &PestExpression) -> Vec<String> {
     let mut values = Vec::new();
 
