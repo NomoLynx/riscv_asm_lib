@@ -16,10 +16,6 @@ impl MachineCode {
         Self { code:MachineCodeData::new(code), offset }
     }
 
-    pub (crate) fn new_align(v:u32) -> Self {
-        Self { code:MachineCodeData::Align(v), offset: 0 }
-    }
-
     pub (crate) fn from_string(machine_code_str:&str, offset:usize) -> Result<Self, AsmError> {
         if machine_code_str.chars().all(|x| x == '0' || x=='1') {
             let machine_code = u32::from_str_radix(machine_code_str, 2)

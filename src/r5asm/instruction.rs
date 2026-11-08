@@ -1493,20 +1493,6 @@ impl Instruction {
         }
     }
 
-    pub (crate) fn is_imm_near_value(&self) -> bool {
-        if let Some(str) = self.imm.as_ref().and_then(|x| x.to_string_option()) {
-            if let Ok(v) = get_u32_from_str(&str) {
-                Self::is_near(v as i64)
-            }
-            else {
-                false
-            }
-        }
-        else {
-            false
-        }
-    }
-
     pub (crate) fn get_inc_and_inc_type(inc:&str) -> Result<(String, InstructionTypes), AsmError> {
         let new_inc_name = inc.to_string();
         let inc_type = OpCode::get_instruction_type_from_string(&new_inc_name)?;
@@ -1676,10 +1662,6 @@ impl Instruction {
     pub (crate) fn set_option(&mut self, p:&Pair<Rule>) {
         self.option = Some(p.as_str().to_string());
         self.source_ranges.option = Some(Self::get_source_range_from_pair(p));
-    }
-
-    pub (crate) fn set_option_value(&mut self, value:&str) {
-        self.option = Some(value.to_string())
     }
 
     pub fn set_r0(&mut self, p:&Pair<Rule>) {
@@ -2564,16 +2546,6 @@ impl Instruction {
         match (self.r0_name.as_ref(), self.r1_name.as_ref()) {
             (Some(a), Some(b)) => a == b,
             _ => false,
-        }
-    }
-
-    pub (crate) fn is_imm_equ(&self, v:&str) -> bool {
-        if let Some(n) = &self.imm {
-            n.is_value()
-            && n.get_value().unwrap() == v.to_string()
-        }
-        else {
-            false
         }
     }
 
