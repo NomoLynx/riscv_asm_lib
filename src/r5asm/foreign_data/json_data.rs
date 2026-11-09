@@ -5,14 +5,14 @@ use core_utils::number::*;
 
 pub type JsonObject = Object;
 
-pub fn get_asm_data_code_from_json(file_path:&str) -> Result<String, JsonParseError> {
+pub fn json_file_to_asm_data_code(file_path:&str) -> Result<String, JsonParseError> {
     // Placeholder implementation, replace with actual JSON parsing and ASM code generation
     let obj = parse_json_from_file(file_path)?;
     
     let mut out = Vec::new();
     parse_json_data(obj, "", &mut out)?;
 
-    let mut output_string = String::new();
+    let mut output_string = format!(".data\r\n");
     for n in out {
         output_string.push_str(&n.to_asm_code());
         output_string.push('\n');
@@ -24,7 +24,8 @@ pub fn get_asm_data_code_from_json(file_path:&str) -> Result<String, JsonParseEr
 fn parse_json_data(obj: JsonObject, prefix: &str, out : &mut Vec<JsonData>) -> Result<(), JsonParseError> {
     for struct_obj in obj.get_pairs() {
         let (key, value) = struct_obj.into();
-        let full_key = format!("{}{}", prefix, key);
+        let full_key = if prefix.is_empty() { key.to_string() } 
+                                else { format!("{prefix}_{key}") };
         value_to_json_value(value, &full_key, out)?;
     }
 
@@ -81,7 +82,7 @@ fn value_to_json_value(value: &Value, prefix: &str, out : &mut Vec<JsonData>) ->
         Value::Object(n) => {
             for json_struct in n.get_pairs() {
                 let (key, value) = json_struct.into();
-                let full_key = format!("{key}_{prefix}");
+                let full_key = format!("{prefix}_{key}");
                 value_to_json_value(value, &full_key, out)?;
             }
         }
@@ -106,11 +107,11 @@ struct JsonData {
 impl JsonData {
     pub fn to_asm_code(&self) -> String {
         match &self.value {
-            JsonValue::String(s) => format!("{}: .asciz \"{}\"", self.name, s),
+            JsonValue::String(s) => format!("{}: .string \"{}\"", self.name, s),
             JsonValue::Int(i) => format!("{}: .dword {}", self.name, i),
             JsonValue::UInt(u) => format!("{}: .dword {}", self.name, u),
             JsonValue::Float(f) => format!("{}: .double {}", self.name, f),
-            JsonValue::Null => format!("{}: .quad 0", self.name),
+            JsonValue::Null => format!("{}: .dword 0", self.name),
         }
     }
 }

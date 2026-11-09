@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use core_utils::file_object::FileObject;
 use core_utils::string::string_to_bool;
 use core_utils::number::get_u64_from_str;
-use core_utils::filesystem::{folder_exists, get_file_containing_folder, get_file_name_without_extension, get_files_in_folder, path_file_exists, read_file_content, read_file_to_string};
+use core_utils::filesystem::*;
 use parser_lib::mermaid_type::MermaidType;
 use pest::Parser;
 
@@ -82,6 +82,7 @@ const ASM_INI_FILE_EXTENSION:&str = ".ini";
 const ASM_MERMAID_FILE_EXTENSION:&str = ".mermaid";
 const ASM_MARKDOWN_FILE_EXTENSION:&str = ".md";
 const ASM_MARKDOWN_FILE_EXTENSION2:&str = ".mkd";
+const ASM_JSON_FILE_EXTENSION:&str = ".json";
 
 pub (crate) fn read_data_md(file_path:&str, recalcuate_file_name:bool) -> Result<String, ParsingError> {
     let data_file = if recalcuate_file_name { get_related_data_file(file_path).ok_or(ParsingError::NoFound((file!().to_string(), line!()).into(), "data file not found".to_string()))? }
@@ -335,7 +336,7 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
             part0.merge(&mut part1);
         }
 
-        //merge files in the data folder
+        //merge markdown files in the data folder (date template will be handle later)
         let folder = get_additional_file_and_folder(file_path).unwrap().0;
         let files = get_files_in_folder(&folder, ASM_MARKDOWN_FILE_EXTENSION);
         for file in files.iter() {
@@ -352,6 +353,18 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
                     return Err(ex)
                 }
             }
+        }
+
+        // merge json files in the data folder
+        let folder = get_additional_file_and_folder(file_path).unwrap().0;
+        let files = get_files_in_folder(&folder, ASM_JSON_FILE_EXTENSION);
+        for file in files {
+            let data = json_file_to_asm_data_code(&file)
+                .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("json file to asm code wrong")))?;
+            debug_string(format!("Processing JSON file: \n{}", data));
+            input = format!("{input}\r\n\r\n{}", data);
+            let mut part1 = parse_asm(&data, config)?;
+            part0.merge(&mut part1);
         }
 
         //merge ini files in the data folder
@@ -383,7 +396,6 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
                 }
                 Some(MermaidType::State(state)) => {
                     let data = from_state1_to_asm(&state)?;
-                    debug_string(format!("Generated ASM from state: \n{}", &data));
                     let mut part1 = parse_asm(&data, config)?;
                     part0.merge(&mut part1);
                 }
