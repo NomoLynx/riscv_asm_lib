@@ -340,19 +340,11 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
         let folder = get_additional_file_and_folder(file_path).unwrap().0;
         let files = get_files_in_folder(&folder, ASM_MARKDOWN_FILE_EXTENSION);
         for file in files.iter() {
-            match read_data_md(file, false)
-                    .map_err(|x| AsmError::GeneralError((file!(), line!()).into(), format!("cannot read data md file {file}: {x:?}"))) {
-                Ok(data) => {
-                    input = format!("{input}\r\n\r\n{}", data);
-
-                    let mut part1 = parse_asm(&data, config)?;
-                    part0.merge(&mut part1);
-                }
-                Err(ex) => {
-                    error_string(format!("error: {ex:?}"));
-                    return Err(ex)
-                }
-            }
+            let data = read_data_md(file, false)
+                    .map_err(|x| AsmError::GeneralError((file!(), line!()).into(), format!("cannot read data md file {file}: {x:?}")))?;
+            input = format!("{input}\r\n\r\n{data}");
+            let mut part1 = parse_asm(&data, config)?;
+            part0.merge(&mut part1);
         }
 
         // merge json files in the data folder
@@ -361,8 +353,7 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
         for file in files {
             let data = json_file_to_asm_data_code(&file)
                 .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("json file to asm code wrong")))?;
-            debug_string(format!("Processing JSON file: \n{}", data));
-            input = format!("{input}\r\n\r\n{}", data);
+            input = format!("{input}\r\n\r\n{data}");
             let mut part1 = parse_asm(&data, config)?;
             part0.merge(&mut part1);
         }
@@ -373,7 +364,7 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
         for file in files {
             let data = ini_file_to_asm_data_code(&file)
                 .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("ini file to asm code wrong")))?;
-            input = format!("{input}\r\n\r\n{}", data);
+            input = format!("{input}\r\n\r\n{data}");
             let mut part1 = parse_asm(&data, config)?;
             part0.merge(&mut part1);
         }
