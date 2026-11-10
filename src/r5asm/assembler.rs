@@ -49,21 +49,22 @@ pub fn parse_asm_use_default_config(input:&str) -> Result<AsmProgram, AsmError> 
 pub fn parse_asm(input:&str, config:&mut CodeGenConfiguration) -> Result<AsmProgram, AsmError> {
     let mut pairs = R5AsmParser::parse(Rule::asm_prog, input).map_err(|e| {
         let line = pest_error_to_line(&e) as u32;
-        let err_str = format!("Assembler Parsing error: {} @ {}", e, line);
+        let err_str = format!("Assembler Parsing error: {e} @ {line}");
         error_string(err_str.clone());
         AsmError::GeneralError((file!(), line).into(), format!("error: {err_str}"))
     })?;
 
     if let Some(pair) = pairs.find(|n| n.as_str().len() == input.len()) {
         let prog_r = AsmProgram::from_pair(&pair, config);
-        if prog_r.is_err() {
-            error_str("cannot get program from Rule::START");
-            Err(AsmError::ParsingConversionError((file!(), line!()).into(), format!("cannot get program from Rule::START")) )
-        }
-        else { 
-            let prog = prog_r.unwrap();
-            prog.validate_section_semantics()?;
-            Ok(prog)
+        match prog_r {
+            Ok(prog) => {
+                prog.validate_section_semantics()?;
+                Ok(prog)
+            }
+            Err(_e) => {
+                error_str("cannot get program from Rule::START");
+                Err(AsmError::ParsingConversionError((file!(), line!()).into(), format!("cannot get program from Rule::START")) )
+            }
         }
     }
     else {

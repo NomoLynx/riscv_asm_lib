@@ -1,3 +1,4 @@
+use parser_lib::markdown_lang::CodeBlock;
 use rust_macro_internal::ini_enum_str;
 
 #[ini_enum_str("src/r5asm/code_option/option.ini")]
