@@ -58,6 +58,11 @@ impl CodeGenConfiguration {
         result
     }
 
+    /// Get the XLEN (register width) from the linker configuration.
+    pub fn get_xlen(&self) -> u8 {
+        self.linker_config.get_xlen()
+    }
+
 }
 
 impl Default for CodeGenConfiguration {

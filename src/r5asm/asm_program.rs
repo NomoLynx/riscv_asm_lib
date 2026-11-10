@@ -5,6 +5,7 @@ use pest::iterators::Pair;
 
 use core_utils::traits::generate_code::GenerateCode;
 use crate::r5asm::code_option::option::CodeOption;
+use crate::r5asm::code_option::option_operation::OptionOperation;
 
 use super::basic_instruction_extensions::BasicInstructionExtensions;
 use super::code_gen_config::CodeGenConfiguration;
@@ -47,14 +48,58 @@ impl AsmProgram {
         for (r, p) in pairs {
             match r {
                 Rule::global_option => {
-                    let option_pairs = p.into_inner()
-                                        .filter(|x| x.as_rule() == Rule::option_directive_param)
-                                        .collect::<Vec<_>>();
-                    for option_pair in option_pairs {
-                        let str = option_pair.as_str().to_string();
-                        let option = CodeOption::from_str(&str)
-                                            .ok_or(AsmError::NoFound((file!(), line!()).into(), format!("cannot find code option for '{str}'")))?;
-                        options.push(option);
+                    let items_vec = p.into_inner()
+                        .map(|x| (x.as_rule(), x))
+                        .collect::<Vec<_>>();
+                    let items = items_vec.as_slice();
+
+                    match items {
+                        [(Rule::option_directive_name, _p), (Rule::option_arch, p2)] => {
+                            let mut option = CodeOption::default();
+                            option.apply_option_arch(&p2, config.get_xlen());
+                            option.recompute(config.get_xlen());
+                            options.push(option);
+                        }
+                        [(Rule::option_directive_name, _p), params@..] => {
+                            let mut option = CodeOption::default();
+                            for (rule, param) in params {
+                                assert!(*rule == Rule::option_directive_param);
+
+                                let param_str = param.as_str();
+                                match param_str {
+                                    "pic" => option.set_pic(true),
+                                    "nopic" => option.set_pic(false),
+                                    "relax" => option.set_relax(true),
+                                    "norelax" => option.set_relax(false),
+                                    "rvc" => option.add_compact(),
+                                    "norvc" => option.remove_compact(),
+                                    "pop" |
+                                    "push" => { 
+                                        let op = OptionOperation::from_str(param_str);
+                                        if let Some(op) = op {
+                                            option.set_operation(op);
+                                        }
+                                        else {
+                                            return Err(AsmError::GeneralError(
+                                                (file!(), line!()).into(),
+                                                format!("unknown option operation '{}'", param_str),
+                                            ));
+                                        }
+                                    }
+                                    _ => return Err(AsmError::GeneralError(
+                                        (file!(), line!()).into(),
+                                        format!("unknown option parameter '{}'", param_str),
+                                    )),
+                                }
+                            }
+
+                            option.recompute(config.get_xlen());
+                            options.push(option);
+                        }
+                        _ => return Err(AsmError::GeneralError(
+                            (file!(), line!()).into(),
+                            format!("unknown option format"),
+                        )),
                     }
                 },
                 Rule::section => {

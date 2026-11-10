@@ -39,6 +39,7 @@ pub struct LinkerConfig {
     soname : Option<String>,
     needed_libs: Vec<String>,
     external_file_functions : Vec<ExternalFileFunctions>,
+    xlen : u8,
 }
 
 impl LinkerConfig {
@@ -104,6 +105,7 @@ impl Default for LinkerConfig {
             soname : None,
             needed_libs : Vec::default(),
             external_file_functions : Vec::default(),
+            xlen : 64,
         }
     }
 }

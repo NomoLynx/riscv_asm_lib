@@ -58,12 +58,44 @@ equ_directive = _{ #inc_name = equ_directive_name ~ identifier ~ "," ~ (integer 
 equ_directive_name = { ".equ" }
 
 global_option = { option_directive }
-option_directive = _{ #inc_name = option_directive_name ~ option_directive_param ~ ("," ~ option_directive_param)* }
+option_directive = _{ 
+    #inc_name = option_directive_name ~ option_arch |
+    #inc_name = option_directive_name ~ option_directive_param ~ ("," ~ option_directive_param)* 
+}
 option_directive_name = { ".option" }
 option_directive_param = { 
-    "arch" | "rvc" | "norvc" | "pic" | "nopic" | "relax" | "norelax" | "push" | "pop" |
-    "+v"  //vector extension enabled
+    "rvc" | "norvc" | "pic" | "nopic" | "relax" | "norelax" | "push" | "pop"
 }
+
+// Longest first: PEG takes the first alternative that matches,
+// so "zvfhmin" must come before "zvfh", and "zkn" before "zk".
+arch_ext_name = {
+    "shcounterenw" | "sscounterenw" | "zihintpause" | "shvstvala" | "shvstvecd" | "smcntrpmf" | "smstateen" | "ssstateen" |
+    "zihintntl" | "zvl16384b" | "zvl32768b" | "zvl65536b" | "shvsatpa" | "smcdeleg" | "smcsrind" | "smdbltrp" |
+    "sscofpmf" | "sscsrind" | "ssdbltrp" | "ssstrict" | "zhinxmin" | "ziccamoa" | "zifencei" | "zvfbfmin" |
+    "zvfbfwma" | "zvl1024b" | "zvl2048b" | "zvl4096b" | "zvl8192b" | "shgatpa" | "shtvala" | "ssccptr" |
+    "ssqosid" | "sstvala" | "sstvecd" | "ssu64xl" | "svinval" | "svnapot" | "za128rs" | "zama16b" |
+    "zfbfmin" | "zicclsm" | "ziccrse" | "zicfilp" | "zicfiss" | "zvfhmin" | "zvl128b" | "zvl256b" |
+    "zvl512b" | "sdtrig" | "smepmp" | "smrnmi" | "ssccfg" | "svbare" | "svpbmt" | "svvptc" |
+    "za64rs" | "zalasr" | "zalrsc" | "zfhmin" | "zic64b" | "zicbom" | "zicbop" | "zicboz" |
+    "ziccif" | "zicntr" | "zicond" | "zve32f" | "zve32x" | "zve64d" | "zve64f" | "zve64x" |
+    "zvkned" | "zvknha" | "zvknhb" | "zvksed" | "zvl32b" | "zvl64b" | "sdext" | "smaia" |
+    "smmpm" | "smnpm" | "ssaia" | "ssnpm" | "svade" | "svadu" | "zaamo" | "zabha" |
+    "zacas" | "zawrs" | "zclsd" | "zcmop" | "zdinx" | "zfinx" | "zhinx" | "zicsr" |
+    "zihpm" | "zilsd" | "zimop" | "zksed" | "zmmul" | "zvknc" | "zvkng" | "zvksc" |
+    "zvksg" | "zvksh" | "sspm" | "sstc" | "supm" | "zbkb" | "zbkc" | "zbkx" |
+    "zcmp" | "zcmt" | "zknd" | "zkne" | "zknh" | "zksh" | "ztso" | "zvbb" |
+    "zvbc" | "zvfh" | "zvkb" | "zvkg" | "zvkn" | "zvks" | "zvkt" | "zba" |
+    "zbb" | "zbc" | "zbs" | "zca" | "zcb" | "zcd" | "zce" | "zcf" |
+    "zfa" | "zfh" | "zkn" | "zkr" | "zks" | "zkt" | "zk" | "a" |
+    "b" | "c" | "d" | "e" | "f" | "h" | "i" | "m" |
+    "q" | "v"
+}
+
+arch_ext = @{ ("+" | "-") ~ arch_ext_name ~ !ASCII_ALPHANUMERIC }
+
+// for ".option arch, +zba, +zbb"
+option_arch = { "arch" ~ "," ~ arch_ext ~ ("," ~ arch_ext)* }
 
 byte_directive = _{ #inc_name = byte_directive_name ~ expression ~ ("," ~ expression)* }
 byte_directive_name = { ".byte" | ".2byte" | ".4byte" | ".8byte" | ".short" | ".long" | ".quad" | ".half" | ".float" | ".double" | ".dword" | ".word" | ".dtprelword" | ".dtpreldworld" }
