@@ -96,7 +96,7 @@ define_exts! {
 
 const WORDS: usize = (Ext::COUNT + 63) / 64;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Default, Eq, Debug)]
 pub struct ExtSet([u64; WORDS]);
 
 impl ExtSet {
@@ -138,12 +138,6 @@ impl ExtSet {
         ExtSet::from_slice(&[
             Ext::I, Ext::M, Ext::A, Ext::F, Ext::D, Ext::C, Ext::Zicsr, Ext::Zifencei,
         ])
-    }
-}
-
-impl Default for ExtSet {
-    fn default() -> Self {
-        Self::gc()
     }
 }
 

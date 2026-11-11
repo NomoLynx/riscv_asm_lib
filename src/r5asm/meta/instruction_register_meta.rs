@@ -34,6 +34,24 @@ impl InstructionRegisterMeta {
             Vec::default()
         }
     } 
+
+    pub fn get_inc_extension(inc:&Instruction) -> Vec<String> {
+        let inc_name = inc.get_name();
+
+        let db = Self::to_typed_vec();
+        let inc_record = db.iter()
+                .find(|record| record.get_instruction_name().to_lowercase() == inc_name.to_lowercase());
+        if let Some(record) = inc_record {
+            let extension = record.get_extension();
+            
+            extension.split("|")
+                    .map(|s| s.to_string())
+                    .collect()
+        }
+        else {
+            Vec::default()
+        }
+    }
 }
 
 #[cfg(test)]
