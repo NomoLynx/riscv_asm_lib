@@ -210,8 +210,13 @@ pub fn emit_vector_instruction(inc: &Instruction, regs: &Register, offset: usize
         super::vector_inc::ValueForm::VV => ValueSrc::Vs1(parse_reg_id(inc, regs, InstructionRegisterName::Rs2)?),
         super::vector_inc::ValueForm::VX => ValueSrc::Rs1(parse_reg_id(inc, regs, InstructionRegisterName::Rs2)?),
         super::vector_inc::ValueForm::VI => {
+            let imm_str = inc.get_imm().and_then(|x| x.to_string_option());
+            if imm_str.is_none() {
+                return Err(AsmError::NoFound((file!(), line!()).into(), format!("cannot find vector immediate in '{inc}'")));
+            }
+            let err_msg = format!("cannot parse vector immediate in '{inc}' for '{imm_str:?}'"); 
             let imm = inc.get_imm_value_from_imm_string()
-                .ok_or(AsmError::ConversionFailed((file!(), line!()).into(), format!("cannot parse vector immediate for '{name}'")))? as i8;
+                .ok_or(AsmError::ConversionFailed((file!(), line!()).into(), err_msg))? as i8;
             ValueSrc::Imm(imm)
         }
     };

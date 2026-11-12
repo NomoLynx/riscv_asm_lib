@@ -585,8 +585,10 @@ impl Instruction {
                         r.set_option(p2);
                         Ok([r].to_vec())
                     }
-                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2), (Rule::option, option)] =>
-                        Ok([Self::new_r0_r1_r2_option(inc_name, inc_type, extention_type, p, p1, p2, option)].to_vec()), 
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2), (Rule::option, option)] => {
+                        let r = Self::new_r0_r1_imm_option(inc_name, inc_type, extention_type, p, p1, p2, option);
+                        Ok([r].to_vec())
+                    },
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::integer, p2)] |
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::var_name, p2)] |
                     [_, (Rule::registers, p), (Rule::integer, p2), (Rule::registers, p1)] |
@@ -1561,6 +1563,12 @@ impl Instruction {
         r
     }
 
+    fn new_r0_r1_imm_option(inc_name:String, inc_type: InstructionTypes, extention_type:BasicInstructionExtensions, p:&Pair<Rule>, p1:&Pair<Rule>, p2:&Pair<Rule>, option:&Pair<Rule>) -> Self {
+        let mut r = Self::new_r0_r1_imm(inc_name, inc_type, extention_type, p, p1, p2);
+        r.set_option(option);
+        r
+    }
+
     fn new_r0_r1_r2_option(inc_name:String, inc_type: InstructionTypes, extention_type:BasicInstructionExtensions, p:&Pair<Rule>, p1:&Pair<Rule>, p2:&Pair<Rule>, option:&Pair<Rule>) -> Self { 
         let mut r = Self::new_r0_r1_r2(inc_name, inc_type, extention_type, p, p1, p2);
         r.set_option(option);
@@ -1787,7 +1795,7 @@ impl Instruction {
     /// get imm value from imme string, not considering the label or register case
     /// if imm cannot be converted to i32, return None
     pub (crate) fn get_imm_value_from_imm_string(&self) -> Option<i32> {
-        if let Some(imm_str) = self.imm.as_ref().and_then(|x| x.to_string_option()) {
+        if let Some(imm_str) = self.get_imm().and_then(|x| x.to_string_option()) {
             if let Ok(v) = get_i32_from_str(&imm_str) {
                 Some(v)
             }

@@ -140,6 +140,20 @@ pub (self) mod tests {
     }
 
     #[test]
+    fn test_rvv_vi_with_mask_option_preserves_immediate() {
+        let mut config = code_gen_config::CodeGenConfiguration::default();
+        let items = instruction::Instruction::from_string("vor.vi v8, v4, -8, v0.t", &mut config)
+            .expect("instruction should parse");
+        let inc = items.first().expect("one instruction expected");
+
+        assert_eq!(
+            inc.get_imm().and_then(|x| x.to_string_option()),
+            Some("-8".to_string())
+        );
+        assert_eq!(inc.option.as_deref(), Some("v0.t"));
+    }
+
+    #[test]
     fn test_float64_relocation_functions_are_parsed_and_resolved() {
         let mut config = code_gen_config::CodeGenConfiguration::default();
         let labels = label_offset::LabelOffsetTable::default();
