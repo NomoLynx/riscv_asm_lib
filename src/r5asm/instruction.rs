@@ -1475,6 +1475,11 @@ impl Instruction {
         self.imm.as_ref()
     }
 
+    /// Get the extension type of the instruction.
+    pub fn get_extension_type(&self) -> &BasicInstructionExtensions {
+        &self.inc_extensions_and_type
+    }
+
     pub (crate) fn get_alternative_r2_value(&self) -> Option<u32> {
         let op = OpCode::from_str(&self.name)?;
         match op {

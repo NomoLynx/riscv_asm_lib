@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use core_utils::filesystem::write_to_file;
+use core_utils::string::capitalize_first;
 use pest::iterators::Pair;
 
 use core_utils::traits::generate_code::GenerateCode;
@@ -77,7 +78,7 @@ impl AsmProgram {
                                     "push" => { 
                                         let op = OptionOperation::from_str(param_str);
                                         if let Some(op) = op {
-                                            option.set_operation(op);
+                                            option.set_operation(Some(op));
                                         }
                                         else {
                                             return Err(AsmError::GeneralError(
@@ -115,6 +116,15 @@ impl AsmProgram {
             sections,
             options,
         })
+    }
+
+    fn calculate_options(&self) -> CodeOption {
+        let mut result = CodeOption::empty();
+        for option in self.options.iter() {
+            result = result + option.clone();
+        }
+
+        result
     }
 
     /// validate the section instruction semantics
@@ -156,6 +166,39 @@ impl AsmProgram {
                                         section.get_section_type().generate_code_string())
                                     )
                                 );
+                            }
+                        }
+                    }
+
+                    let option = self.calculate_options();
+                    assert!(!option.is_effective_empty());
+
+                    for inc2 in section.get_all_items() {
+                        if let Some(inc) = inc2.get_inc() {
+                            if inc.get_extension_type().is_pseudoinstructions() {
+                                continue;
+                            }
+                            
+                            let extension = super::meta::instruction_register_meta::InstructionRegisterMeta::get_inc_extension(inc);
+                            if !extension.is_empty() {
+                                let exts = extension.iter()
+                                                            .map(|x| capitalize_first(x).into())
+                                                            .collect::<Vec<_>>();
+                                let inc_contains_ext = exts.iter().any(|x| option.contains_extension(*x));
+                                if !inc_contains_ext {
+                                    let current_extset = option.get_effective();
+                                    let exts_str = if exts.is_empty() {
+                                        String::from("None")
+                                    } else {
+                                        exts.iter().map(|x| format!("{x:?}")).collect::<Vec<_>>().join(", ")
+                                    };
+                                    let err_msg = format!("{inc} requires '{exts_str}' but current extensions are '{current_extset}'", );
+                                    return Err(AsmError::GeneralError((file!(), line!()).into(), 
+                                        err_msg));
+                                }
+                            }
+                            else {
+                                warn_string(format!("cannot find extension info for '{inc}'"));
                             }
                         }
                     }

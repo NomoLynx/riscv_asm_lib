@@ -96,7 +96,7 @@ define_exts! {
 
 const WORDS: usize = (Ext::COUNT + 63) / 64;
 
-#[derive(Clone, Copy, PartialEq, Default, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ExtSet([u64; WORDS]);
 
 impl ExtSet {
@@ -138,6 +138,129 @@ impl ExtSet {
         ExtSet::from_slice(&[
             Ext::I, Ext::M, Ext::A, Ext::F, Ext::D, Ext::C, Ext::Zicsr, Ext::Zifencei,
         ])
+    }
+
+    /// Check if the set contains no extensions.
+    pub fn is_empty(&self) -> bool {
+        self.0.iter().all(|&x| x == 0)
+    }
+
+    /// Create an empty `ExtSet` with no extensions.
+    pub fn empty() -> ExtSet {
+        ExtSet([0; WORDS])
+    }
+}
+
+impl From<&str> for Ext { 
+    fn from(s: &str) -> Self {
+        match s {
+            "I" => Ext::I,
+            "M" => Ext::M,
+            "A" => Ext::A,
+            "F" => Ext::F,
+            "D" => Ext::D,
+            "C" => Ext::C,
+            "Zicsr" => Ext::Zicsr,
+            "Zifencei" => Ext::Zifencei,
+            "G" => Ext::G,
+            "B" => Ext::B,
+            "Zba" => Ext::Zba,
+            "Zbb" => Ext::Zbb,
+            "Zbs" => Ext::Zbs,
+            "Zmmul" => Ext::Zmmul,
+            "Zaamo" => Ext::Zaamo,
+            "Zalrsc" => Ext::Zalrsc,
+            "Zacas" => Ext::Zacas,
+            "Zabha" => Ext::Zabha,
+            "Q" => Ext::Q,
+            "Zfh" => Ext::Zfh,
+            "Zfhmin" => Ext::Zfhmin,
+            "Zfbfmin" => Ext::Zfbfmin,
+            "Zfa" => Ext::Zfa,
+            "Zdinx" => Ext::Zdinx,
+            "Zfinx" => Ext::Zfinx,
+            "Zhinx" => Ext::Zhinx,
+            "Zhinxmin" => Ext::Zhinxmin,
+            "V" => Ext::V,
+            "Zve64d" => Ext::Zve64d,
+            "Zvl128b" => Ext::Zvl128b,
+            "Zve64f" => Ext::Zve64f,
+            "Zve64x" => Ext::Zve64x,
+            "Zve32f" => Ext::Zve32f,
+            "Zve32x" => Ext::Zve32x,
+            "Zvl64b" => Ext::Zvl64b,
+            "Zvl65536b" => Ext::Zvl65536b,
+            "Zvl32768b" => Ext::Zvl32768b,
+            "Zvl16384b" => Ext::Zvl16384b,
+            "Zvl8192b" => Ext::Zvl8192b,
+            "Zvl4096b" => Ext::Zvl4096b,
+            "Zvl2048b" => Ext::Zvl2048b,
+            "Zvl1024b" => Ext::Zvl1024b,
+            "Zvl512b" => Ext::Zvl512b,
+            "Zvl256b" => Ext::Zvl256b,
+            "Zvl32b" => Ext::Zvl32b,
+            "Zvfh" => Ext::Zvfh,
+            "Zvfhmin" => Ext::Zvfhmin,
+            "Zvfbfmin" => Ext::Zvfbfmin,
+            "Zvfbfwma" => Ext::Zvfbfwma,
+            "Zvbb" => Ext::Zvbb,
+            "Zvbc" => Ext::Zvbc,
+            "Zvkb" => Ext::Zvkb,
+            "Zvkg" => Ext::Zvkg,
+            "Zvkned" => Ext::Zvkned,
+            "Zvknha" => Ext::Zvknha,
+            "Zvknhb" => Ext::Zvknhb,
+            "Zvksed" => Ext::Zvksed,
+            "Zvksh" => Ext::Zvksh,
+            "Zvkn" => Ext::Zvkn,
+            "Zvknc" => Ext::Zvknc,
+            "Zvkng" => Ext::Zvkng,
+            "Zvks" => Ext::Zvks,
+            "Zvksc" => Ext::Zvksc,
+            "Zvksg" => Ext::Zvksg,
+            "Zca" => Ext::Zca,
+            "Zcb" => Ext::Zcb,
+            "Zcd" => Ext::Zcd,
+            "Zcf" => Ext::Zcf,
+            "Zcmp" => Ext::Zcmp,
+            "Zcmt" => Ext::Zcmt,
+            "Zce" => Ext::Zce,
+            "Zicntr" => Ext::Zicntr,
+            "Zihpm" => Ext::Zihpm,
+            "Zk" => Ext::Zk,
+            "Zkn" => Ext::Zkn,
+            "Zks" => Ext::Zks,
+            "Zbkb" => Ext::Zbkb,
+            "Zbkc" => Ext::Zbkc,
+            "Zbkx" => Ext::Zbkx,
+            "Zknd" => Ext::Zknd,
+            "Zkne" => Ext::Zkne,
+            "Zknh" => Ext::Zknh,
+            "Zvkt" => Ext::Zvkt,
+            "Zksh" => Ext::Zksh,
+            "Zbc" => Ext::Zbc,
+            "Zicond" => Ext::Zicond,
+            _ => panic!("Unknown extension: '{}'", s),
+        }
+    }
+}
+
+impl From<&String> for Ext {
+    fn from(s: &String) -> Self {
+        s.as_str().into()
+    }
+}
+
+impl From<String> for Ext {
+    fn from(s: String) -> Self {
+        s.as_str().into()
+    }
+}
+
+impl Default for ExtSet {
+    fn default() -> Self {
+        // default value contains all extensions enabled
+        ExtSet([!0; WORDS])
     }
 }
 
@@ -286,7 +409,14 @@ pub fn isa_string(set: &ExtSet, xlen: u8) -> String {
         s.push_str(n);
         prev_single = n.len() == 1;
     }
+    
     s
+}
+
+impl std::fmt::Display for ExtSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", isa_string(self, 64))
+    }
 }
 
 // ---------------------------------------------------------------------------

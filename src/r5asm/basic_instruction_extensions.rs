@@ -1,4 +1,6 @@
-#[derive(Clone, PartialEq)]
+use rust_macro::GenIsEnumVariant;
+
+#[derive(Clone, PartialEq, GenIsEnumVariant)]
 pub enum BasicInstructionExtensions {
     BaseIntegerInstructions,
     RvcInstructions,
