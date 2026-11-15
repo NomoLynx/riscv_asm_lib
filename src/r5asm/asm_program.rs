@@ -175,7 +175,8 @@ impl AsmProgram {
 
                     for inc2 in section.get_all_items() {
                         if let Some(inc) = inc2.get_inc() {
-                            if inc.get_extension_type().is_pseudoinstructions() {
+                            if inc.get_extension_type().is_pseudoinstructions() ||
+                               inc.get_extension_type().is_unknown() {
                                 continue;
                             }
                             

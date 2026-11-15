@@ -20,7 +20,7 @@ impl InstructionRegisterMeta {
             
             let r0_changed = record.get_register0_changed();
             let r1_changed = record.get_register1_changed();
-            let r2_changed = record.get_register2_changed();
+            let r2_changed = record.get_register2_changed().map(|x| *x).unwrap_or(false);
             let r3_changed = record.get_register3_changed().map(|x| *x).unwrap_or(false);
 
             if r0_changed { changed_regs.push(inc.get_r0().unwrap().to_string()); }
