@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use core_utils::filesystem::write_to_file;
-use core_utils::string::capitalize_first;
+use core_utils::string::*;
 use pest::iterators::Pair;
 
 use core_utils::traits::generate_code::GenerateCode;
@@ -183,7 +183,7 @@ impl AsmProgram {
                             let extension = super::meta::instruction_register_meta::InstructionRegisterMeta::get_inc_extension(inc);
                             if !extension.is_empty() {
                                 let exts = extension.iter()
-                                                            .map(|x| capitalize_first(x).into())
+                                                            .map(|x| capitalize_first_identifier(x).into())
                                                             .collect::<Vec<_>>();
                                 let inc_contains_ext = exts.iter().any(|x| option.contains_extension(*x));
                                 if !inc_contains_ext {
