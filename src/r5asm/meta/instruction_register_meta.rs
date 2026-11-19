@@ -2,6 +2,7 @@ use rust_macro_internal::csv_struct;
 use parser_lib::csv::*;
 
 use crate::r5asm::instruction::Instruction;
+use core_utils::indexed_store::IndexedStore;
 
 #[csv_struct("src/r5asm/meta/instruction_register.csv")]
 pub struct InstructionRegisterMeta {
@@ -38,9 +39,8 @@ impl InstructionRegisterMeta {
     pub fn get_inc_extension(inc:&Instruction) -> Vec<String> {
         let inc_name = inc.get_name();
 
-        let db = Self::to_typed_vec();
-        let inc_record = db.iter()
-                .find(|record| record.get_instruction_name().to_lowercase() == inc_name.to_lowercase());
+        let db = Self::to_indexed_typed_vec();
+        let inc_record = db.get_by_key(&inc_name.to_lowercase());
         if let Some(record) = inc_record {
             let extension = record.get_extension();
             
