@@ -1,9 +1,8 @@
 use parser_lib::mermaid_packet::*;
-use parser_lib::common::ParsingError;
+use parser_lib::mermaid_error::MermaidError;
 
-pub (crate) fn get_offsets_from_packet(file_path:&str) -> Result<Vec<(usize, String)>, ParsingError> {
-    let packet_file = parse(file_path)
-                        .map_err(|e| ParsingError::PacketErr(e))?;
+pub (crate) fn get_offsets_from_packet(file_path:&str) -> Result<Vec<(usize, String)>, MermaidError> {
+    let packet_file = parse(file_path)?;
     
     let name = packet_file.get_name().trim_start_matches("\"")
                                 .trim_end_matches("\"")
@@ -15,7 +14,8 @@ pub (crate) fn get_offsets_from_packet(file_path:&str) -> Result<Vec<(usize, Str
     let mut r = Vec::default();
     let mut offset = 0;
     for entry in packet_file.get_entries() {
-        let (value, name) = entry.into();
+        let value = entry.get_bit_size() as usize;
+        let name = entry.get_name().to_string();
         r.push((offset, format!("{package_name}_{name}")));
         offset += value;
     }
@@ -25,7 +25,7 @@ pub (crate) fn get_offsets_from_packet(file_path:&str) -> Result<Vec<(usize, Str
 
 /// generate equal statements from 'get_offsets_from_packet' result, for example:
 /// 0:   .equ packet_name_field1, 0
-pub (crate) fn generate_equ_statements_from_packet(file_path:&str) -> Result<Vec<String>, ParsingError> {
+pub (crate) fn generate_equ_statements_from_packet(file_path:&str) -> Result<Vec<String>, MermaidError> {
     let offsets = get_offsets_from_packet(file_path)?;
     let mut r = Vec::default();
     for (offset, name) in offsets {

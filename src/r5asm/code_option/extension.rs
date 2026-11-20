@@ -415,7 +415,7 @@ pub fn isa_string(set: &ExtSet, xlen: u8) -> String {
 
 impl std::fmt::Display for ExtSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", isa_string(self, 64))
+        f.write_str(&isa_string(self, 64))
     }
 }
 
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn d_brings_f() {
-        let mut s = ExtSet::default();
+        let mut s = ExtSet::empty();
         s.insert(D);
         let eff = closure(s, 64);
         assert!(eff.has(F) && eff.has(Zicsr));
@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn c_is_conditional() {
-        let mut s = ExtSet::default();
+        let mut s = ExtSet::empty();
         s.insert(C);
         s.insert(D);
         let eff = closure(s, 64);
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn remove_then_recompute() {
-        let mut explicit = ExtSet::default();
+        let mut explicit = ExtSet::empty();
         explicit.insert(D);
         assert!(closure(explicit, 64).has(F));
         explicit.remove(D);

@@ -4,7 +4,7 @@ use core_utils::file_object::FileObject;
 use core_utils::string::string_to_bool;
 use core_utils::number::get_u64_from_str;
 use core_utils::filesystem::*;
-use parser_lib::mermaid_type::MermaidType;
+use parser_lib::mermaid_state::parse_state_graph;
 use pest::Parser;
 
 use core_utils::debug::*;
@@ -258,7 +258,11 @@ pub fn load_asm_solution_from_ini(ini_file_path: &str) -> Result<(ASMSolution, C
         config.get_linker_config_mut().set_soname(Some(value.trim().to_string()));
     }
 
-    if let Some(value) = properties.get("asm_needed_libs").or_else(|| properties.get("asm_linker_needed_libs")) {
+    if let Some(value) = properties
+        .get("asm_needed_libs")
+        .or_else(|| properties.get("asm_linker_needed_libs"))
+        .or_else(|| properties.get("linker_needed_libs"))
+        .or_else(|| properties.get("needed_libs")) {
         config.get_linker_config_mut().set_needed_libraries_from_csv(value);
         config.get_linker_config_mut().process_exteranl_function(&ini_base_folder);
     }
@@ -376,22 +380,18 @@ pub fn build_asm(file_path:&str, output_file_name:&str, config:&mut CodeGenConfi
         for file in files {
             let file_content = read_file_content(&file)
                                         .map_err(|_| AsmError::IOError)?;
-            let mermaid = MermaidType::get_mermaid_type_from_string_content(&file_content);
-            match mermaid {
-                Some(MermaidType::Packet(_)) => {
-                    let data = generate_equ_statements_from_packet(&file)
-                        .map_err(|_| AsmError::GeneralError((file!(), line!()).into(), format!("packet file to asm code wrong")))?;
-                    let data_str = format!(".data\r\n{}", data.join("\r\n"));
-                    input = format!("{input}\r\n\r\n{}", data_str);
-                    let mut part1 = parse_asm(&data_str, config)?;
-                    part0.merge(&mut part1);
-                }
-                Some(MermaidType::State(state)) => {
-                    let data = from_state1_to_asm(&state)?;
-                    let mut part1 = parse_asm(&data, config)?;
-                    part0.merge(&mut part1);
-                }
-                _ => {}
+            if let Ok(state) = parse_state_graph(&file_content) {
+                let data = from_state1_to_asm(&state)?;
+                let mut part1 = parse_asm(&data, config)?;
+                part0.merge(&mut part1);
+            }
+            else if parser_lib::mermaid_packet::parse_str(&file_content).is_ok() {
+                let data = generate_equ_statements_from_packet(&file)
+                    .map_err(|e| AsmError::GeneralError((file!(), line!()).into(), format!("packet file to asm code wrong: {e:?}")))?;
+                let data_str = format!(".data\r\n{}", data.join("\r\n"));
+                input = format!("{input}\r\n\r\n{}", data_str);
+                let mut part1 = parse_asm(&data_str, config)?;
+                part0.merge(&mut part1);
             }
         }
 

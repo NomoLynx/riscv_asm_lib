@@ -1981,7 +1981,7 @@ impl Instruction {
                     if (rel_fun == "%hi" || rel_fun == "%lo")
                         && get_i64_from_str(&imm).is_err()
                     {
-                        if let Ok(v) = get_f32_from_str(&imm) {
+                        if let Ok(v) = imm.trim().replace('_', "").parse::<f32>() {
                             return Ok(v.to_bits());
                         }
                     }
@@ -2011,7 +2011,7 @@ impl Instruction {
         }
         else {
             if self.use_rel_fun64() && get_i64_from_str(&imm).is_err() {
-                if let Ok(v) = get_f64_from_str(&imm) {
+                if let Ok(v) = imm.trim().replace('_', "").parse::<f64>() {
                     return Ok(v.to_bits());
                 }
             }

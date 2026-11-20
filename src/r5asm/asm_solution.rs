@@ -15,7 +15,11 @@ pub struct ASMSolution {
 impl ASMSolution {
     pub fn new(main_file: FileObject) -> Self {
         let mut source_files = Vec::new();
-        source_files.push(main_file.clone());
+        source_files.push(FileObject::new(
+            main_file.get_file_name(),
+            main_file.get_file_extension(),
+            main_file.get_content(),
+        ));
 
         Self {
             container_path: None,

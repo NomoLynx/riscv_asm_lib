@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use core_utils::filesystem::write_to_file;
-use core_utils::string::*;
+use parser_lib::common::pascal;
 use pest::iterators::Pair;
 
 use core_utils::traits::generate_code::GenerateCode;
@@ -183,7 +183,7 @@ impl AsmProgram {
                             let extension = super::meta::instruction_register_meta::InstructionRegisterMeta::get_inc_extension(inc);
                             if !extension.is_empty() {
                                 let exts = extension.iter()
-                                                            .map(|x| capitalize_first_identifier(x).into())
+                                                            .map(|x| pascal(x).into())
                                                             .collect::<Vec<_>>();
                                 let inc_contains_ext = exts.iter().any(|x| option.contains_extension(*x));
                                 if !inc_contains_ext {
@@ -1301,17 +1301,17 @@ impl AsmProgram {
                 };
 
                 let imm_len = 13;
-                let mut imm_str = format!("{imm:0>imm_len$b}");
+                let mut imm_str: String = format!("{imm:0>imm_len$b}");
                 if imm_str.len() > imm_len {
-                    imm_str = Self::substring(&imm_str, imm_str.len()-imm_len, imm_len);
+                    imm_str = Self::substring(imm_str.as_str(), imm_str.len()-imm_len, imm_len);
                 }
 
-                let imm11 = Self::substring(&imm_str, 1, 1);
-                let imm4_1 = Self::substring(&imm_str, imm_str.len() - 5, 4); //imm_str length set to 13, that's why need to -5 not -4
+                let imm11 = Self::substring(imm_str.as_str(), 1, 1);
+                let imm4_1 = Self::substring(imm_str.as_str(), imm_str.len() - 5, 4); //imm_str length set to 13, that's why need to -5 not -4
                 let funct3 = if let Some(n) = inc.get_option_value_str() { n } 
                                      else { op_code.get_funct3_str()? };
-                let imm10_5 = Self::substring(&imm_str, 2, 6);
-                let imm12 = Self::substring(&imm_str, 0, 1);
+                let imm10_5 = Self::substring(imm_str.as_str(), 2, 6);
+                let imm12 = Self::substring(imm_str.as_str(), 0, 1);
                 let machine_code_str = format!("{imm12}{imm10_5}{rs2}{rs1}{funct3}{imm4_1}{imm11}{op_code_str}");
                 if machine_code_str.len() > 32 {
                     return Err(AsmError::ConversionFailed((file!(), line!()).into(), format!("machine code {machine_code_str} is too long to convert in B inc type")));
@@ -1326,19 +1326,20 @@ impl AsmProgram {
                 let imm_len = 12;
 
                 if op_code.is_control_register_as_imm() {
-                    let rs1 = 
-                        if inc.r2_name.is_some() { 
-                            inc.get_register_id_as_string(InstructionRegisterName::Rs2, regs)?  //reg in rs2 location will be treated as rs1
-                        }
-                        else {
-                            format!("{:0>5b}", inc.imm_to_u32()?)
-                        };
+                    let rs1: String;
+                    if inc.r2_name.is_some() {
+                        rs1 = inc.get_register_id_as_string(InstructionRegisterName::Rs2, regs)?;  //reg in rs2 location will be treated as rs1
+                    }
+                    else {
+                        let value = inc.imm_to_u32()?;
+                        rs1 = format!("{value:0>5b}");
+                    }
                     let value = u32::from_str_radix(&inc.get_register_id_as_string(InstructionRegisterName::Rs1, regs)?, 2).unwrap(); //reg in rs1 location is the control reg and will serve as imm
-                    let mut imm_str = format!("{value:0>imm_len$b}");
+                    let mut imm_str: String = format!("{value:0>imm_len$b}");
 
                     if imm_str.len() > imm_len {
-                        imm_str = Self::reverse(&imm_str);
-                        imm_str = Self::reverse(&imm_str[0..imm_len].to_string());
+                        imm_str = Self::reverse(imm_str.as_str());
+                        imm_str = Self::reverse(&imm_str[0..imm_len]);
                     }
 
                     let machine_code_str = format!("{imm_str}{rs1}{funct3}{rd}{op_code_str}");
@@ -1353,11 +1354,11 @@ impl AsmProgram {
                 else {                    
                     let rs1 = inc.get_register_id_as_string(InstructionRegisterName::Rs1, regs)?;
                     let value = inc.label_virtual_address;
-                    let mut imm_str = format!("{value:0>imm_len$b}");
+                    let mut imm_str: String = format!("{value:0>imm_len$b}");
                     
                     if imm_str.len() > imm_len {
-                        imm_str = Self::reverse(&imm_str);
-                        imm_str = Self::reverse(&imm_str[0..imm_len].to_string());
+                        imm_str = Self::reverse(imm_str.as_str());
+                        imm_str = Self::reverse(&imm_str[0..imm_len]);
                     }
 
                     let machine_code_str = format!("{imm_str}{rs1}{funct3}{rd}{op_code_str}");
@@ -1373,16 +1374,16 @@ impl AsmProgram {
             InstructionTypes::J => {
                 let rd = inc.get_register_id_as_string(InstructionRegisterName::Rd, regs)?;
                 let imm = inc.label_virtual_address;
-                let mut imm_str = format!("{imm:0>21b}");
+                let mut imm_str: String = format!("{imm:0>21b}");
                 if imm_str.len() > 21 {
-                    imm_str = Self::substring(&imm_str, imm_str.len()-21, 21);
+                    imm_str = Self::substring(imm_str.as_str(), imm_str.len()-21, 21);
                 }
 
                 imm_str = imm_str.chars().rev().collect::<String>();
-                let imm20 = Self::reverse(&Self::substring(&imm_str, 20, 1));
-                let imm19_12 = Self::reverse(&Self::substring(&imm_str, 12, 8));
-                let imm11 = Self::reverse(&Self::substring(&imm_str, 11, 1));
-                let imm10_1 = Self::reverse(&Self::substring(&imm_str, 1, 10));          
+                let imm20 = Self::reverse(&Self::substring(imm_str.as_str(), 20, 1));
+                let imm19_12 = Self::reverse(&Self::substring(imm_str.as_str(), 12, 8));
+                let imm11 = Self::reverse(&Self::substring(imm_str.as_str(), 11, 1));
+                let imm10_1 = Self::reverse(&Self::substring(imm_str.as_str(), 1, 10));          
                 let machine_code_str = format!("{imm20}{imm10_1}{imm11}{imm19_12}{rd}{op_code_str}");
                 if machine_code_str.len() > 32 {
                     return Err(AsmError::ConversionFailed((file!(), line!()).into(), format!("machine code {machine_code_str} is too long to convert in J inc type")));
@@ -1396,32 +1397,26 @@ impl AsmProgram {
                 let r2 = inc.get_register_id_as_string(InstructionRegisterName::Rs2, regs)?;
                 let funct3 = if let Some(n) = inc.get_option_value_str() { n } 
                                      else { op_code.get_funct3_str()? };
-                let funct7 = 
-                    if inc.has_reg(InstructionRegisterName::Rs3) {  //if Rs3 present, the Rs3 will be placed in the funct7 place
-                        let reg_id = regs.get_register_value(inc.r3_name.as_ref())? as u32;
-                        if let Some(funct7) = op_code.get_funct7() {
-                            let v = (funct7 as u32) | (reg_id << 2);     //move reg_id left,those 2 bits are fmt format and set previously in opcode side
-                            format!("{v:0>7b}") 
-                        }
-                        else {
-                            return Err(AsmError::NoFound((file!(), line!()).into(), format!("cannot find funct7 from {op_code:?} when there is R3 present")))
-                        }
-                    } 
-                    else { 
-                        if inc.is_atomic() {
-                            let v = inc.get_atomic_option()?;
-                            if let Some(funct7) = op_code.get_funct7() {
-                                let y = (funct7 as u32) & ((! 0b11) | v);
-                                format!("{y:0>7b}")
-                            }
-                            else {
-                                return Err(AsmError::NoFound((file!(), line!()).into(), format!("cannot find funct7 from {op_code:?} for atomic operation")))
-                            }
-                        }
-                        else {
-                            op_code.get_funct7_str()? 
-                        }
+                let funct7: String;
+                if inc.has_reg(InstructionRegisterName::Rs3) {  //if Rs3 present, the Rs3 will be placed in the funct7 place
+                    let reg_id = regs.get_register_value(inc.r3_name.as_ref())? as u32;
+                    let Some(value) = op_code.get_funct7() else {
+                        return Err(AsmError::NoFound((file!(), line!()).into(), format!("cannot find funct7 from {op_code:?} when there is R3 present")))
                     };
+                    let v = (value as u32) | (reg_id << 2);     //move reg_id left,those 2 bits are fmt format and set previously in opcode side
+                    funct7 = format!("{v:0>7b}");
+                } 
+                else if inc.is_atomic() {
+                    let v = inc.get_atomic_option()?;
+                    let Some(value) = op_code.get_funct7() else {
+                        return Err(AsmError::NoFound((file!(), line!()).into(), format!("cannot find funct7 from {op_code:?} for atomic operation")))
+                    };
+                    let y = (value as u32) & ((! 0b11) | v);
+                    funct7 = format!("{y:0>7b}");
+                }
+                else {
+                    funct7 = op_code.get_funct7_str()?;
+                }
                 let machine_code_str = format!("{funct7}{r2}{r1}{funct3}{rd}{op_code_str}");
                 if machine_code_str.len() > 32 {
                     return Err(AsmError::ConversionFailed((file!(), line!()).into(), format!("machine code {machine_code_str} is too long to convert in R inc type")));
@@ -1432,16 +1427,16 @@ impl AsmProgram {
             InstructionTypes::S => {
                 let imm = inc.label_virtual_address;
                 let imm_len = 12;
-                let mut imm_str = format!("{imm:0>imm_len$b}");
+                let mut imm_str: String = format!("{imm:0>imm_len$b}");
                 if imm_str.len() > imm_len {
-                    imm_str = Self::substring(&imm_str, imm_str.len()-imm_len, imm_len);
+                    imm_str = Self::substring(imm_str.as_str(), imm_str.len()-imm_len, imm_len);
                 }
                 let imm4_0 = imm_str[imm_str.len() - 5..].to_string();
                 let funct3 = if let Some(n) = inc.get_option_value_str() { n } 
                                      else { op_code.get_funct3_str()? };
                 let r2 = inc.get_register_id_as_string(InstructionRegisterName::Rd, regs)?;
                 let r1 = inc.get_register_id_as_string(InstructionRegisterName::Rs1, regs)?;
-                let imm11_5 = Self::substring(&imm_str, 0, imm_str.len() - 5);
+                let imm11_5 = Self::substring(imm_str.as_str(), 0, imm_str.len() - 5);
                 let machine_code_str = format!("{imm11_5}{r2}{r1}{funct3}{imm4_0}{op_code_str}");
                 if machine_code_str.len() > 32 {
                     return Err(AsmError::ConversionFailed((file!(), line!()).into(), format!("machine code {machine_code_str} is too long to convert in S inc type")));
@@ -1452,9 +1447,9 @@ impl AsmProgram {
             InstructionTypes::U => {
                 let rd = inc.get_register_id_as_string(InstructionRegisterName::Rd, regs)?;
                 let imm_str_len = 20;
-                let mut imm_str = format!("{:0>imm_str_len$b}", inc.label_virtual_address);
+                let mut imm_str: String = format!("{:0>imm_str_len$b}", inc.label_virtual_address);
                 if imm_str.len() > imm_str_len {
-                    imm_str = Self::substring(&imm_str, imm_str.len()-imm_str_len, imm_str_len);
+                    imm_str = Self::substring(imm_str.as_str(), imm_str.len()-imm_str_len, imm_str_len);
                 }
                 
                 let machine_code_str = format!("{imm_str}{rd}{op_code_str}");

@@ -1,5 +1,5 @@
 use parser_lib::csv::InferredType;
-use parser_lib::json::{JsonParseError, Object, Value, infer_scalar_from_str};
+use parser_lib::json::{JsonParseError, JsonType, Object, Value, infer_json};
 use parser_lib::json::parse_json_from_file;
 use core_utils::number::*;
 
@@ -23,9 +23,12 @@ pub fn json_file_to_asm_data_code(file_path:&str) -> Result<String, JsonParseErr
 
 fn parse_json_data(obj: JsonObject, prefix: &str, out : &mut Vec<JsonData>) -> Result<(), JsonParseError> {
     for struct_obj in obj.get_pairs() {
-        let (key, value) = struct_obj.into();
-        let full_key = if prefix.is_empty() { key.to_string() } 
-                                else { format!("{prefix}_{key}") };
+        let (key, value): (&String, &Value) = struct_obj.into();
+        let full_key = if prefix.is_empty() {
+            key.to_owned()
+        } else {
+            prefix.to_owned() + "_" + key.as_str()
+        };
         value_to_json_value(value, &full_key, out)?;
     }
 
@@ -43,7 +46,10 @@ fn value_to_json_value(value: &Value, prefix: &str, out : &mut Vec<JsonData>) ->
             value: JsonValue::Null,
         }),
         Value::Number(n) => { 
-            let ty = infer_scalar_from_str(n);
+            let ty = match infer_json(String::new(), value) {
+                JsonType::Scalar(ty) => ty,
+                other => return Err(JsonParseError::GeneralError(format!("{other:?} cannot be converted to Number"))),
+            };
             match ty {
                 InferredType::Int => { 
                     let v = get_i64_from_str(n).unwrap();
@@ -60,7 +66,9 @@ fn value_to_json_value(value: &Value, prefix: &str, out : &mut Vec<JsonData>) ->
                     })
                 }
                 InferredType::Float => {
-                    let v = get_f32_from_str(n).unwrap();
+                    let v = n.trim().replace('_', "").parse::<f32>().map_err(|_| {
+                        JsonParseError::GeneralError(format!("cannot convert {n} to f32"))
+                    })?;
                     out.push(JsonData {
                         name: prefix.to_string(),
                         value: JsonValue::Float(v as i32),
@@ -81,8 +89,8 @@ fn value_to_json_value(value: &Value, prefix: &str, out : &mut Vec<JsonData>) ->
         }
         Value::Object(n) => {
             for json_struct in n.get_pairs() {
-                let (key, value) = json_struct.into();
-                let full_key = format!("{prefix}_{key}");
+                let (key, value): (&String, &Value) = json_struct.into();
+                let full_key = prefix.to_owned() + "_" + key.as_str();
                 value_to_json_value(value, &full_key, out)?;
             }
         }

@@ -1,7 +1,6 @@
 use core_utils::filesystem::read_file_content;
 use parser_lib::ini::{InitFile, InitFileError, get_ini_properties};
 use core_utils::debug::*;
-use core_utils::number::*;
 
 fn get_sorted_ini_properties(ini_file: &InitFile) -> Vec<(String, String)> {
     let mut items = get_ini_properties(ini_file).into_iter().collect::<Vec<_>>();
@@ -14,27 +13,54 @@ fn escape_asm_string(value: &str) -> String {
 }
 
 fn parse_integer_literal(value: &str) -> Option<i128> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
+    if value.trim().is_empty() {
         return None;
     }
 
-    let normalized = trimmed.strip_prefix('+').unwrap_or(trimmed);
-    let normalized = if let Some(rest) = normalized.strip_prefix("0X") {
-        format!("0x{rest}")
-    } else if let Some(rest) = normalized.strip_prefix("0B") {
-        format!("0b{rest}")
-    } else if let Some(rest) = normalized.strip_prefix("0O") {
-        format!("0o{rest}")
-    } else {
-        normalized.to_string()
-    };
-
-    get_i128_from_str(&normalized).ok()
+    parse_i128_literal(value)
 }
 
 fn normalize_numeric_literal(value: &str) -> String {
     value.trim().replace('_', "")
+}
+
+fn parse_i128_literal(value: &str) -> Option<i128> {
+    let normalized = value.trim().replace('_', "");
+    let normalized = normalized.as_str();
+    let normalized = normalized.strip_prefix('+').unwrap_or(normalized);
+
+    let (radix, digits) = if let Some(rest) = normalized
+        .strip_prefix("0x")
+        .or_else(|| normalized.strip_prefix("0X"))
+    {
+        (16, rest)
+    } else if let Some(rest) = normalized
+        .strip_prefix("0b")
+        .or_else(|| normalized.strip_prefix("0B"))
+    {
+        (2, rest)
+    } else if let Some(rest) = normalized
+        .strip_prefix("0o")
+        .or_else(|| normalized.strip_prefix("0O"))
+    {
+        (8, rest)
+    } else {
+        (10, normalized)
+    };
+
+    if radix == 10 {
+        normalized.parse::<i128>().ok()
+    } else {
+        i128::from_str_radix(digits, radix).ok()
+    }
+}
+
+fn parse_f32_literal(value: &str) -> Option<f32> {
+    normalize_numeric_literal(value).parse::<f32>().ok()
+}
+
+fn parse_f64_literal(value: &str) -> Option<f64> {
+    normalize_numeric_literal(value).parse::<f64>().ok()
 }
 
 fn infer_asm_directive(value: &str) -> (&'static str, String) {
@@ -60,11 +86,11 @@ fn infer_asm_directive(value: &str) -> (&'static str, String) {
         return (".dword", number.to_string());
     }
 
-    if get_f32_from_str(value).map(|number| number.is_finite()).unwrap_or(false) {
+    if parse_f32_literal(value).map(|number| number.is_finite()).unwrap_or(false) {
         return (".float", normalize_numeric_literal(value));
     }
 
-    if get_f64_from_str(value).map(|number| number.is_finite()).unwrap_or(false) {
+    if parse_f64_literal(value).map(|number| number.is_finite()).unwrap_or(false) {
         return (".double", normalize_numeric_literal(value));
     }
 

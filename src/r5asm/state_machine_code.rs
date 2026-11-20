@@ -6,6 +6,28 @@ use rust_macro::Accessors;
 
 use crate::r5asm::asm_error::AsmError;
 
+fn collect_all_states(state_graph: &StateGraphProgram) -> Vec<String> {
+    let mut states = Vec::new();
+    for (start, end, _) in state_graph.get_all_type_conversion_triples() {
+        for state in [start, end] {
+            if !states.contains(&state) {
+                states.push(state);
+            }
+        }
+    }
+    states
+}
+
+fn collect_all_events(state_graph: &StateGraphProgram) -> Vec<String> {
+    let mut events = Vec::new();
+    for (_, _, event) in state_graph.get_all_type_conversion_triples() {
+        if !events.contains(&event) {
+            events.push(event);
+        }
+    }
+    events
+}
+
 /// Convert a state graph program into corresponding assembly code using a template.
 pub fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmError> {
     let template_text = include_str!("../templates/state_machine.template");
@@ -16,19 +38,22 @@ pub fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmE
     let event_prefix = "EVENT_";
     let state_prefix = "STATE_";
 
-    let event = state_graph.get_all_events()
+    let events = collect_all_events(state_graph);
+    let states = collect_all_states(state_graph);
+
+    let event = events
                                                     .iter()
                                                     .enumerate()
                                                     .map(|(i, e)| format!(".equ {event_prefix}{e}, {i}"))
                                                     .collect::<Vec<_>>();
 
-    let state = state_graph.get_all_states()
+    let state = states
                                                     .iter()
                                                     .enumerate()
                                                     .map(|(i, s)| format!(".equ {state_prefix}{s}, {i}"))
                                                     .collect::<Vec<_>>();
 
-    let state_fn = state_graph.get_all_states()
+    let state_fn = states
                                                     .iter()
                                                     .map(|s| format!(".word {state_prefix}{s}"))
                                                     .collect::<Vec<_>>();
@@ -36,7 +61,7 @@ pub fn from_state1_to_asm(state_graph:&StateGraphProgram) -> Result<String, AsmE
     let mut result = String::new();
     let mut s0 = String::new();
     
-    for state in state_graph.get_all_states() {
+    for state in &states {
         let state_code = StateMachineStateCode::new_from_state_diagram(state_graph, &state);
         
         s0 = state_code.get_state_register().to_string();
@@ -100,11 +125,9 @@ impl StateMachineStateCode {
     }
 
     pub fn new_from_state_diagram(diagram:&StateGraphProgram, state_name:&str) -> Self {
-        let stmts = diagram.find_stmt_by_state(state_name);
-        
         let mut target_event_states = HashMap::default();
-        for stmt in stmts {
-            if let Some((event, target)) = stmt.get_event_target_state() {
+        for (start, target, event) in diagram.get_all_type_conversion_triples() {
+            if start == state_name {
                 target_event_states.insert(event, target);
             }
         }
