@@ -24,13 +24,20 @@ impl MacroInstructionList {
     }
 
     /// replace parameters in all macro instructions
-    pub fn replace_parameters(&mut self, parameters: &Vec<String>) {
+    pub fn replace_parameters(&mut self, parameters: &[String]) -> Result<(), AsmError> {
         // parameter number must equal to highest parameter number
-        assert_eq!(parameters.len(), self.get_highest_parameter_number(), "parameter length (left) does not match highest parameter number (right)");
-        
+        let expected = self.get_highest_parameter_number();
+        if parameters.len() != expected {
+            return Err(AsmError::ConversionFailed(
+                (file!(), line!()).into(),
+                format!("macro template expects {expected} parameter(s), but {} provided", parameters.len()),
+            ));
+        }
+
         for mi in &mut self.0 {
             mi.replace_parameters(parameters);
         }
+        Ok(())
     }
 
     pub fn to_instructions(&self) -> Result<Vec<Instruction>, AsmError> {

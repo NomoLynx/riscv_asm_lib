@@ -50,14 +50,57 @@ impl MacroInstructionHashMap {
         self.0.get_mut(key)
     }
 
-    pub fn get_incs(&self, key: &str, parameters: &Vec<String>) -> Result<Vec<Instruction>, AsmError> {
-        if let Some(macro_instruction_list) = self.get(key) {
+    /// [Macro Expansion Entry Point]
+    ///
+    /// - To add a new macro instruction: just add a table row and a template section in
+    ///   `macro_instruction.md`; no Rust code changes needed.
+    /// - To add a same-name variant with a different operand form (e.g. `exit` for an immediate
+    ///   vs. `exit_reg` for a register): just add one entry to `MACRO_OVERLOADS` in
+    ///   `macro_overload.rs` and add the target template in the Markdown file.
+    /// - See the module-level documentation of `macro_overload.rs` for operand-form definitions
+    ///   and matching precedence.
+    ///
+    /// `args` accepts both plain string arrays (forms are treated as `Unknown` and excluded
+    /// from typed form overload resolution) and pest pairs carrying syntax rules
+    /// (e.g. `[p, p1]`, with forms inferred automatically).
+    pub fn get_incs(&self, key: &str, args: impl Into<MacroArgs>) -> Result<Vec<Instruction>, AsmError> {
+        let args = args.into();
+        let key = key.to_lowercase();
+        let resolved_key = resolve_overload(&key, args.forms());
+
+        if let Some(macro_instruction_list) = self.get(resolved_key) {
+            let expected = macro_instruction_list.get_highest_parameter_number();
+            let provided = args.values().len();
+            if provided != expected {
+                return Err(AsmError::ConversionFailed(
+                    (file!(), line!()).into(),
+                    format!(
+                        "macro instruction '{key}' parameter count mismatch: template needs {expected}, got {provided}; current operand forms: {:?}; registered overloads: {}",
+                        args.forms(),
+                        describe_overloads(&key)
+                    ),
+                ));
+            }
             let mut mil = macro_instruction_list.clone();
-            mil.replace_parameters(parameters);
-            let r = mil.to_instructions()?;
-            Ok(r)
+            mil.replace_parameters(args.values())?;
+            mil.to_instructions()
+        } else if resolved_key != key {
+            Err(AsmError::NoFound(
+                (file!(), line!()).into(),
+                format!(
+                    "macro overload dispatched '{key}' to '{resolved_key}', but template '{resolved_key}' is not defined in macro_instruction.md; current operand forms: {:?}",
+                    args.forms()
+                ),
+            ))
         } else {
-            Err(AsmError::NoFound((file!(), line!()).into(), format!("Macro instruction with key '{}' not found", key)))
+            Err(AsmError::NoFound(
+                (file!(), line!()).into(),
+                format!(
+                    "macro instruction '{key}' not found; current operand forms: {:?}; registered overloads: {}",
+                    args.forms(),
+                    describe_overloads(&key)
+                ),
+            ))
         }
     }
 }

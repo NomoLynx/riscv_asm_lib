@@ -10,7 +10,7 @@ use core_utils::traits::generate_code::GenerateCode;
 use super::label_offset::*;
 
 use super::basic_instruction_extensions::BasicInstructionExtensions;
-use super::{code_gen_config::CodeGenConfiguration, opcode::OpCode, r5asm_pest::*, register::Register};
+use super::{code_gen_config::CodeGenConfiguration, macro_instruction::MacroArgs, opcode::OpCode, r5asm_pest::*, register::Register};
 
 use std::fmt;
 use std::fmt::Display;
@@ -305,9 +305,9 @@ impl Instruction {
         Ok([r, r2].to_vec())
     }
 
-    fn get_psueduo_replacement(inc_name_low_case:&str, parameters:&Vec<String>, config:&CodeGenConfiguration) -> Result<Vec<Self>, AsmError> {
+    fn get_pseudo_replacement(inc_name_low_case:&str, args: impl Into<MacroArgs>, config:&CodeGenConfiguration) -> Result<Vec<Self>, AsmError> {
         let macro_archive = config.get_marco_instruction_archive();
-        match macro_archive.get_incs(inc_name_low_case, &parameters) {
+        match macro_archive.get_incs(inc_name_low_case, args) {
             Ok(r) => Ok(r),
             Err(err) => {
                 error_string(format!("cannot convert pseudo code '{inc_name_low_case}' to base inc"));
@@ -949,8 +949,7 @@ impl Instruction {
                                     Ok(la_incs.iter().chain([r2].iter()).cloned().collect())
                                 }
                                 _ => {
-                                    let parameters = vec![p.as_str().to_string(), p1.as_str().to_string()];
-                                    Self::get_psueduo_replacement(inc_name_low_case, &parameters, config)
+                                    Self::get_pseudo_replacement(inc_name_low_case, [p, p1], config)
                                 }
                             }
                         }
@@ -1032,8 +1031,7 @@ impl Instruction {
                                     Ok([r].to_vec())
                                 }
                                 _ => {
-                                    let parameters = vec![p.as_str().to_string(), p1.as_str().to_string()];
-                                    Self::get_psueduo_replacement(inc_name_low_case, &parameters, config)
+                                    Self::get_pseudo_replacement(inc_name_low_case, [p, p1], config)
                                 }
                             }
                         }
@@ -1067,8 +1065,7 @@ impl Instruction {
                                     Ok([r].to_vec())
                                 }
                                 _ => {  // handle other pseudo instructions with 3 parameters, like muli, divi, etc.
-                                    let parameters = vec![p.as_str().to_string(), p1.as_str().to_string(), p2.as_str().to_string()];
-                                    Self::get_psueduo_replacement(inc_name_low_case, &parameters, config)
+                                    Self::get_pseudo_replacement(inc_name_low_case, [p, p1, p2], config)
                                 }
                             }
                         }
@@ -1079,8 +1076,7 @@ impl Instruction {
                     }
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::float, p2)] => {
                         if replace_pseudo {
-                            let parameters = vec![p.as_str().to_string(), p1.as_str().to_string(), p2.as_str().to_string()];
-                            Self::get_psueduo_replacement(inc_name_low_case, &parameters, config)
+                            Self::get_pseudo_replacement(inc_name_low_case, [p, p1, p2], config)
                         }
                         else {
                             let r = Self::new_r0_r1_imm(inc_name, InstructionTypes::UnKnown, BasicInstructionExtensions::Unknown, p, p1, p2);
@@ -1144,8 +1140,7 @@ impl Instruction {
                                     Ok(r)
                                 }
                                 _ => {  // handle other pseudo instructions with 1 parameter, like push, pop, etc.
-                                    let parameters = vec![p.as_str().to_string()];
-                                    Self::get_psueduo_replacement(inc_name_low_case, &parameters, config)
+                                    Self::get_pseudo_replacement(inc_name_low_case, [p], config)
                                 }
                             }
                         }
@@ -1233,21 +1228,8 @@ impl Instruction {
                                     r.set_imm_from_pair(p);
                                     Ok([r].to_vec())
                                 }
-                                "exit" => {
-                                    let rule = p.as_rule();
-                                    let parameters = vec![p.as_str().to_string()];
-                                    let macro_archive = config.get_marco_instruction_archive_mut();
-                                    if rule == Rule::var_name {
-                                        let new_key = format!("exit_reg");
-                                        macro_archive.get_incs(& new_key, &parameters)
-                                    }
-                                    else {
-                                        macro_archive.get_incs(inc_name_low_case, &parameters) 
-                                    }                                                                       
-                                }
                                 _ => {
-                                    let parameters = vec![p.as_str().to_string()];
-                                    Self::get_psueduo_replacement(inc_name_low_case, &parameters, config)
+                                    Self::get_pseudo_replacement(inc_name_low_case, [p], config)
                                 }
                             }
                         }
@@ -1404,7 +1386,7 @@ impl Instruction {
                                     Ok([r].to_vec())
                                 }
                                 _ => {
-                                    match Self::get_psueduo_replacement(inc_name_low_case, & vec![], config) {
+                                    match Self::get_pseudo_replacement(inc_name_low_case, MacroArgs::empty(), config) {
                                         Ok(r) => Ok(r),
                                         Err(_) => {
                                             let msg = format!("cannot convert pseudo code '{inc_name}' to base inc");

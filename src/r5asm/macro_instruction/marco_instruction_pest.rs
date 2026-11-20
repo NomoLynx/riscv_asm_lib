@@ -115,7 +115,7 @@ impl MacroInstruction {
     }
 
     /// replace parameters with given values, the index is 1-based
-    pub fn replace_parameters(&mut self, values: &Vec<String>) {
+    pub fn replace_parameters(&mut self, values: &[String]) {
         if self.has_parameters() == false {
             return;
         }

@@ -368,7 +368,7 @@ impl OpCode {
         }
         else {
             //warn_string(format!("{str} cannot find an instruction"));
-            Ok(InstructionTypes::UnKnown)   //psueduo code
+            Ok(InstructionTypes::UnKnown)   //pseudo code
         }
     }
 

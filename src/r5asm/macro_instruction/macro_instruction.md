@@ -2,6 +2,8 @@
 
 this file contains macro instruction for RiscV asm. Please make sure the asm code only contains basic instructions, not previlege ones or other types. check BaseIntegerInstructions for those instructions. if more instruction required to be added, reference exit.
 
+Note: same-name macro variants dispatched by operand form (e.g. exit / exit_reg) are registered in src/r5asm/macro_instruction/macro_overload.rs (MACRO_OVERLOADS). To add such a variant, add one row there and a template section in this file; no parsing or expansion code needs to change.
+
 | CLang | ASM |
 | --- | --- |
 | exit | [exit the code](#exit-the-code) |

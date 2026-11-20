@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use chrono::Local;
-use core_utils::filesystem::{append_to_file_from_path, delete_file_path};
+use core_utils::filesystem::{append_to_file, delete_file_option};
 use parser_lib::markdown_lang::load_md_file_from_str;
 use parser_lib::pest_parser::{PestAtom, PestExpression};
 use parser_lib::pest_parser::pest_pest::pest_parse;
@@ -36,10 +36,10 @@ fn extract_string_literals(expression: &PestExpression) -> Vec<String> {
 
     for atom in expression.get_all_atoms() {
         match atom {
-            PestAtom::String(_, _, value, _) => {
+            PestAtom::String(_, value, _) => {
                 values.push(value.trim_matches('"').to_string());
             }
-            PestAtom::Expression(_, _, nested, _) => {
+            PestAtom::Expression(_, nested, _) => {
                 values.extend(extract_string_literals(nested));
             }
             _ => {}
@@ -77,7 +77,8 @@ fn validate_markdown_instructions_are_defined(markdown_names: &[String], pest_so
         .collect();
     
     let warning_file_path = Path::new(WARNING_OUTPUT_FOLDER).join("missing_macro_instructions.txt");
-    let _ = delete_file_path(&warning_file_path);
+    let warning_file_name = warning_file_path.to_string_lossy().to_string();
+    let _ = delete_file_option(Some(&warning_file_name));
     for missing_name in markdown_names
         .iter()
         .filter(|name| !pest_names.contains(name.as_str()))
@@ -86,7 +87,7 @@ fn validate_markdown_instructions_are_defined(markdown_names: &[String], pest_so
         let current_time_string = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
         let err_msg = format!("[{current_time_string}] macro instruction '{missing_name}' NOT defined in r5asm.pest\n");
         
-        match append_to_file_from_path(&warning_file_path, &err_msg) {
+        match append_to_file(&warning_file_name, &err_msg) {
             Ok(_) => {}
             Err(_) => eprintln!("Failed to append to file: {}", warning_file_path.display()),
         }
