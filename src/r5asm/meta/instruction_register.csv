@@ -158,6 +158,8 @@ flw,true,false,false,,f
 fld,true,false,false,,d
 fsw,false,false,false,,f
 fsd,false,false,false,,d
+fadd.h,true,false,false,,zfh
+fsub.h,true,false,false,,zfh
 fadd.s,true,false,false,,f
 fsub.s,true,false,false,,f
 fmul.s,true,false,false,,f

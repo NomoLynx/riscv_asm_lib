@@ -191,6 +191,8 @@ impl OpCode {
             "FLD" => Some(Self::Fld),
             "FSW" => Some(Self::Fsw),
             "FSD" => Some(Self::Fsd),
+            "FADD.H" => Some(Self::Faddh),
+            "FSUB.H" => Some(Self::Fsubh),
             "FADD.S" => Some(Self::Fadds),
             "FSUB.S" => Some(Self::Fsubs),
             "FMUL.S" => Some(Self::Fmuls),
@@ -380,5 +382,19 @@ impl OpCode {
     pub fn get_funct7_str(&self) -> Result<String, AsmError> {
         let r = self.get_funct7().ok_or(AsmError::ConverstionError((file!(), line!()).into(), format!("cannot find funct7 for {self:?}")))?;
         Ok(format!("{r:0>7b}"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OpCode;
+
+    #[test]
+    fn test_half_precision_add_and_sub_opcodes() {
+        let fadd = OpCode::from_str("fadd.h").expect("fadd.h should be recognized");
+        let fsub = OpCode::from_str("fsub.h").expect("fsub.h should be recognized");
+
+        assert_eq!(fadd.get_funct7_str().unwrap(), "0000010");
+        assert_eq!(fsub.get_funct7_str().unwrap(), "0000110");
     }
 }

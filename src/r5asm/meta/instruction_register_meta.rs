@@ -72,5 +72,24 @@ mod tests {
 
         assert_eq!(changed, vec!["x1".to_string()]);
     }
+
+    #[test]
+    fn test_half_precision_arithmetic_uses_zfh_extension() {
+        let mut config = CodeGenConfiguration::default();
+
+        for code in ["fadd.h fa0, fa1, fa2", "fsub.h fa0, fa1, fa2"] {
+            let instructions = Instruction::from_string(code, &mut config)
+                .expect("half-precision instruction should parse");
+            let inc = instructions
+                .first()
+                .expect("one parsed half-precision instruction should be returned");
+
+            assert_eq!(
+                InstructionRegisterMeta::get_inc_extension(inc),
+                vec!["zfh".to_string()],
+                "unexpected extension for `{code}`"
+            );
+        }
+    }
 }
 
