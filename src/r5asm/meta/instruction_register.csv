@@ -158,6 +158,8 @@ flw,true,false,false,,f
 fld,true,false,false,,d
 fsw,false,false,false,,f
 fsd,false,false,false,,d
+fadd.h,true,false,false,,zfh
+fsub.h,true,false,false,,zfh
 fadd.s,true,false,false,,f
 fsub.s,true,false,false,,f
 fmul.s,true,false,false,,f
@@ -286,7 +288,6 @@ vsrl.vx,true,false,false,,zve32x
 vsrl.vv,true,false,false,,zve32x
 vsra.vi,true,false,false,,zve32x
 vsra.vv,true,false,false,,zve32x
-vsll.vx,true,false,false,,zve32x
 vsub.vv,true,false,false,,zve32x
 vsub.vx,true,false,false,,zve32x
 vsub.vi,true,false,false,,zve32x
@@ -294,15 +295,12 @@ vmul.vv,true,false,false,,zve32x
 vmul.vx,true,false,false,,zve32x
 vmul.vi,true,false,false,,zve32x
 vdiv.vv,true,false,false,,zve32x
-vand.vi,true,false,false,,zve32x
 vxor.vi,true,false,false,,zve32x
 vxor.vv,true,false,false,,zve32x
 vxor.vx,true,false,false,,zve32x
 vrem.vv,true,false,false,,zve32x
 vrem.vi,true,false,false,,zve32x
 vrem.vx,true,false,false,,zve32x
-vdivu.vv,true,false,false,,zve32x
-vdivu.vi,true,false,false,,zve32x
 vdiv.vx,true,false,false,,zve32x
 vdiv.vi,true,false,false,,zve32x
 vremu.vx,true,false,false,,zve32x

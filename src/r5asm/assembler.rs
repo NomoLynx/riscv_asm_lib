@@ -485,6 +485,26 @@ mod tests {
     }
 
     #[test]
+    fn parse_half_precision_unit_tests() {
+        let fixtures = ["faddh.s", "fsubh.s"];
+
+        for fixture in fixtures {
+            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("..")
+                .join("test_code_data")
+                .join("test_r5asm")
+                .join("unit_tests")
+                .join(fixture);
+            let source = std::fs::read_to_string(&path)
+                .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()));
+            let mut config = CodeGenConfiguration::default();
+
+            parse_asm(&source, &mut config)
+                .unwrap_or_else(|error| panic!("failed to parse {fixture}: {error:?}"));
+        }
+    }
+
+    #[test]
     fn parse_asm_rejects_data_directive_inside_text_section() {
         let mut config = CodeGenConfiguration::default();
         let input = ".text\n.word 1\n";

@@ -2,6 +2,7 @@ use rust_macro_internal::csv_struct;
 use parser_lib::csv::*;
 
 use crate::r5asm::instruction::Instruction;
+use core_utils::indexed_store::IndexedStore;
 
 #[csv_struct("src/r5asm/meta/instruction_register.csv")]
 pub struct InstructionRegisterMeta {
@@ -38,9 +39,8 @@ impl InstructionRegisterMeta {
     pub fn get_inc_extension(inc:&Instruction) -> Vec<String> {
         let inc_name = inc.get_name();
 
-        let db = Self::to_typed_vec();
-        let inc_record = db.iter()
-                .find(|record| record.get_instruction_name().to_lowercase() == inc_name.to_lowercase());
+        let db = Self::to_indexed_typed_vec();
+        let inc_record = db.get_by_key(&inc_name.to_lowercase());
         if let Some(record) = inc_record {
             let extension = record.get_extension();
             
@@ -71,6 +71,25 @@ mod tests {
         let changed = InstructionRegisterMeta::get_changed_registers(inc);
 
         assert_eq!(changed, vec!["x1".to_string()]);
+    }
+
+    #[test]
+    fn test_half_precision_arithmetic_uses_zfh_extension() {
+        let mut config = CodeGenConfiguration::default();
+
+        for code in ["fadd.h fa0, fa1, fa2", "fsub.h fa0, fa1, fa2"] {
+            let instructions = Instruction::from_string(code, &mut config)
+                .expect("half-precision instruction should parse");
+            let inc = instructions
+                .first()
+                .expect("one parsed half-precision instruction should be returned");
+
+            assert_eq!(
+                InstructionRegisterMeta::get_inc_extension(inc),
+                vec!["zfh".to_string()],
+                "unexpected extension for `{code}`"
+            );
+        }
     }
 }
 
