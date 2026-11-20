@@ -14,8 +14,7 @@ pub (crate) fn get_offsets_from_packet(file_path:&str) -> Result<Vec<(usize, Str
     let mut r = Vec::default();
     let mut offset = 0;
     for entry in packet_file.get_entries() {
-        let value = entry.get_bit_size() as usize;
-        let name = entry.get_name().to_string();
+        let (value, name) = entry.into();
         r.push((offset, format!("{package_name}_{name}")));
         offset += value;
     }
