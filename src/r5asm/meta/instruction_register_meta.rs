@@ -87,6 +87,14 @@ mod tests {
             "fmsub.h fa0, fa1, fa2, fa3",
             "fnmsub.h fa0, fa1, fa2, fa3",
             "fnmadd.h fa0, fa1, fa2, fa3",
+            "fsgnj.h fa0, fa1, fa2",
+            "fsgnjn.h fa0, fa1, fa2",
+            "fsgnjx.h fa0, fa1, fa2",
+            "fmin.h fa0, fa1, fa2",
+            "fmax.h fa0, fa1, fa2",
+            "feq.h a0, fa1, fa2",
+            "flt.h a0, fa1, fa2",
+            "fle.h a0, fa1, fa2",
         ] {
             let instructions = Instruction::from_string(code, &mut config)
                 .expect("half-precision instruction should parse");

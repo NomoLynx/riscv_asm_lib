@@ -167,6 +167,14 @@ fsub.h,true,false,false,,zfh
 fmul.h,true,false,false,,zfh
 fdiv.h,true,false,false,,zfh
 fsqrt.h,true,false,false,,zfh
+fsgnj.h,true,false,false,,zfh
+fsgnjn.h,true,false,false,,zfh
+fsgnjx.h,true,false,false,,zfh
+fmin.h,true,false,false,,zfh
+fmax.h,true,false,false,,zfh
+feq.h,true,false,false,,zfh
+flt.h,true,false,false,,zfh
+fle.h,true,false,false,,zfh
 fadd.s,true,false,false,,f
 fsub.s,true,false,false,,f
 fmul.s,true,false,false,,f

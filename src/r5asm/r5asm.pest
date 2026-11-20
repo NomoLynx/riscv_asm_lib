@@ -366,9 +366,9 @@ rvf_load_store_incs = @{ (^"fl" | ^"fs") ~ wdq }
 rvf_load_arithemtic_incs = @{ (^"fadd." | ^"fsub." | ^"fmul." | ^"fdiv.") ~ hsdq }
 rvf_load_arithemtic_2reg_incs = @{ ^"fsqrt." ~ hsdq }
 rvf_mul_add_incs = @{ (^"fmadd." | ^"fnmadd." | ^"fmsub." | ^"fnmsub.") ~ hsdq }
-rvf_sign_inject_incs = @{ (^"fsgnjx." | ^"fsgnjn." | ^"fsgnj.") ~ sdq }
-rvf_min_max_incs = @{ (^"fmin." | ^"fmax.") ~ sdq }
-rvf_compare_incs = @{ (^"feq." | ^"fle." | ^"flt.") ~ sdq }
+rvf_sign_inject_incs = @{ (^"fsgnjx." | ^"fsgnjn." | ^"fsgnj.") ~ hsdq }
+rvf_min_max_incs = @{ (^"fmin." | ^"fmax.") ~ hsdq }
+rvf_compare_incs = @{ (^"feq." | ^"fle." | ^"flt.") ~ hsdq }
 rvf_categorization_incs = @{ ^"fclass." ~ sdq }
 
 rvf64_128_instructions = {

@@ -496,6 +496,14 @@ mod tests {
             "fmsubh.s",
             "fnmsubh.s",
             "fnmaddh.s",
+            "fsgnjh.s",
+            "fsgnjnh.s",
+            "fsgnjxh.s",
+            "fminh.s",
+            "fmaxh.s",
+            "feqh.s",
+            "flth.s",
+            "fleh.s",
         ];
 
         for fixture in fixtures {
