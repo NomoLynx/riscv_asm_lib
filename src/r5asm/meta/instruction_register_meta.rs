@@ -77,7 +77,17 @@ mod tests {
     fn test_half_precision_arithmetic_uses_zfh_extension() {
         let mut config = CodeGenConfiguration::default();
 
-        for code in ["fadd.h fa0, fa1, fa2", "fsub.h fa0, fa1, fa2"] {
+        for code in [
+            "fadd.h fa0, fa1, fa2",
+            "fsub.h fa0, fa1, fa2",
+            "fmul.h fa0, fa1, fa2",
+            "fdiv.h fa0, fa1, fa2",
+            "fsqrt.h fa0, fa1",
+            "fmadd.h fa0, fa1, fa2, fa3",
+            "fmsub.h fa0, fa1, fa2, fa3",
+            "fnmsub.h fa0, fa1, fa2, fa3",
+            "fnmadd.h fa0, fa1, fa2, fa3",
+        ] {
             let instructions = Instruction::from_string(code, &mut config)
                 .expect("half-precision instruction should parse");
             let inc = instructions

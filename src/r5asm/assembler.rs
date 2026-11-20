@@ -486,7 +486,17 @@ mod tests {
 
     #[test]
     fn parse_half_precision_unit_tests() {
-        let fixtures = ["faddh.s", "fsubh.s"];
+        let fixtures = [
+            "faddh.s",
+            "fsubh.s",
+            "fmulh.s",
+            "fdivh.s",
+            "fsqrth.s",
+            "fmaddh.s",
+            "fmsubh.s",
+            "fnmsubh.s",
+            "fnmaddh.s",
+        ];
 
         for fixture in fixtures {
             let path = Path::new(env!("CARGO_MANIFEST_DIR"))
