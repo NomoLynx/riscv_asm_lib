@@ -211,6 +211,8 @@ impl OpCode {
             "FCLASS.H" => Some(Self::Fclassh),
             "FCVT.S.H" => Some(Self::Fcvtsh),
             "FCVT.H.S" => Some(Self::Fcvths),
+            "FCVT.BF16.S" => Some(Self::Fcvtbf16s),
+            "FCVT.S.BF16" => Some(Self::Fcvtsbf16),
             "FCVT.D.H" => Some(Self::Fcvtdh),
             "FCVT.H.D" => Some(Self::Fcvthd),
             "FCVT.Q.H" => Some(Self::Fcvtqh),

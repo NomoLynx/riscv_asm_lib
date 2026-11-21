@@ -487,6 +487,7 @@ mod tests {
     #[test]
     fn parse_half_precision_unit_tests() {
         let fixtures = [
+            "bfloat16_support.s",
             "faddh.s",
             "fsubh.s",
             "fmulh.s",
@@ -521,6 +522,38 @@ mod tests {
             parse_asm(&source, &mut config)
                 .unwrap_or_else(|error| panic!("failed to parse {fixture}: {error:?}"));
         }
+    }
+
+    #[test]
+    fn build_bfloat16_support_unit_test() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("test_code_data")
+            .join("test_r5asm")
+            .join("unit_tests")
+            .join("bfloat16_support.s");
+        let source = std::fs::read_to_string(&path)
+            .unwrap_or_else(|error| panic!("failed to read bfloat16 fixture: {error}",));
+
+        let bytes = build_asm_snippet(
+            &source,
+            &BuildSnippetParameters::default(),
+        )
+        .expect("BFloat16 support fixture should build");
+
+        let words = bytes
+            .chunks_exact(4)
+            .map(|chunk| u32::from_le_bytes(chunk.try_into().expect("4-byte instruction")))
+            .collect::<Vec<_>>();
+
+        assert!(
+            words.contains(&0x446070d3),
+            "missing FCVT.BF16.S encoding; words: {words:?}",
+        );
+        assert!(
+            words.contains(&0x4060f153),
+            "missing FCVT.S.BF16 encoding; words: {words:?}",
+        );
     }
 
     #[test]
