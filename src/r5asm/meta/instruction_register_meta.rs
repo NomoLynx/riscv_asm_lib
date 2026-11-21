@@ -77,7 +77,44 @@ mod tests {
     fn test_half_precision_arithmetic_uses_zfh_extension() {
         let mut config = CodeGenConfiguration::default();
 
-        for code in ["fadd.h fa0, fa1, fa2", "fsub.h fa0, fa1, fa2"] {
+        for code in [
+            "fadd.h fa0, fa1, fa2",
+            "fsub.h fa0, fa1, fa2",
+            "fmul.h fa0, fa1, fa2",
+            "fdiv.h fa0, fa1, fa2",
+            "fsqrt.h fa0, fa1",
+            "fmadd.h fa0, fa1, fa2, fa3",
+            "fmsub.h fa0, fa1, fa2, fa3",
+            "fnmsub.h fa0, fa1, fa2, fa3",
+            "fnmadd.h fa0, fa1, fa2, fa3",
+            "fsgnj.h fa0, fa1, fa2",
+            "fsgnjn.h fa0, fa1, fa2",
+            "fsgnjx.h fa0, fa1, fa2",
+            "fmin.h fa0, fa1, fa2",
+            "fmax.h fa0, fa1, fa2",
+            "feq.h a0, fa1, fa2",
+            "flt.h a0, fa1, fa2",
+            "fle.h a0, fa1, fa2",
+            "fclass.h a0, fa1",
+            "fcvt.s.h fa0, fa1",
+            "fcvt.h.s fa0, fa1",
+            "fcvt.d.h fa0, fa1",
+            "fcvt.h.d fa0, fa1",
+            "fcvt.q.h fa0, fa1",
+            "fcvt.h.q fa0, fa1",
+            "fcvt.h.w fa0, a1",
+            "fcvt.h.wu fa0, a1",
+            "fcvt.h.l fa0, a1",
+            "fcvt.h.lu fa0, a1",
+            "fcvt.w.h a0, fa1",
+            "fcvt.wu.h a0, fa1",
+            "fcvt.l.h a0, fa1",
+            "fcvt.lu.h a0, fa1",
+            "flh fa0, 0(a0)",
+            "fsh fa0, 0(a0)",
+            "fmv.x.h a0, fa1",
+            "fmv.h.x fa0, a1",
+        ] {
             let instructions = Instruction::from_string(code, &mut config)
                 .expect("half-precision instruction should parse");
             let inc = instructions
@@ -88,6 +125,39 @@ mod tests {
                 InstructionRegisterMeta::get_inc_extension(inc),
                 vec!["zfh".to_string()],
                 "unexpected extension for `{code}`"
+            );
+        }
+    }
+
+    #[test]
+    fn test_half_precision_conversion_selectors() {
+        let cases = [
+            ("fcvt.s.h fa0, fa1", 2),
+            ("fcvt.h.s fa0, fa1", 0),
+            ("fcvt.d.h fa0, fa1", 2),
+            ("fcvt.h.d fa0, fa1", 1),
+            ("fcvt.q.h fa0, fa1", 2),
+            ("fcvt.h.q fa0, fa1", 3),
+            ("fcvt.h.w fa0, a1", 0),
+            ("fcvt.h.wu fa0, a1", 1),
+            ("fcvt.h.l fa0, a1", 2),
+            ("fcvt.h.lu fa0, a1", 3),
+            ("fcvt.w.h a0, fa1", 0),
+            ("fcvt.wu.h a0, fa1", 1),
+            ("fcvt.l.h a0, fa1", 2),
+            ("fcvt.lu.h a0, fa1", 3),
+        ];
+        let mut config = CodeGenConfiguration::default();
+
+        for (code, expected) in cases {
+            let instructions = Instruction::from_string(code, &mut config)
+                .expect("half-precision conversion should parse");
+            let inc = instructions.first().expect("one parsed conversion expected");
+
+            assert_eq!(
+                inc.get_alternative_r2_value(),
+                Some(expected),
+                "unexpected rs2 selector for `{code}`"
             );
         }
     }

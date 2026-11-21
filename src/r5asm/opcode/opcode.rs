@@ -187,12 +187,46 @@ impl OpCode {
             "FMSUB.S" => Some(Self::Fmsubs),
             "FNMSUB.S" => Some(Self::Fnmsubs),
             "FNMADD.S" => Some(Self::Fnmadds),
+            "FMADD.H" => Some(Self::Fmaddh),
+            "FMSUB.H" => Some(Self::Fmsubh),
+            "FNMSUB.H" => Some(Self::Fnmsubh),
+            "FNMADD.H" => Some(Self::Fnmaddh),
             "FLW" => Some(Self::Flw),
             "FLD" => Some(Self::Fld),
             "FSW" => Some(Self::Fsw),
             "FSD" => Some(Self::Fsd),
             "FADD.H" => Some(Self::Faddh),
             "FSUB.H" => Some(Self::Fsubh),
+            "FMUL.H" => Some(Self::Fmulh),
+            "FDIV.H" => Some(Self::Fdivh),
+            "FSQRT.H" => Some(Self::Fsqrth),
+            "FSGNJ.H" => Some(Self::Fsgnjh),
+            "FSGNJN.H" => Some(Self::Fsgnjnh),
+            "FSGNJX.H" => Some(Self::Fsgnjxh),
+            "FMIN.H" => Some(Self::Fminh),
+            "FMAX.H" => Some(Self::Fmaxh),
+            "FEQ.H" => Some(Self::Feqh),
+            "FLT.H" => Some(Self::Flth),
+            "FLE.H" => Some(Self::Fleh),
+            "FCLASS.H" => Some(Self::Fclassh),
+            "FCVT.S.H" => Some(Self::Fcvtsh),
+            "FCVT.H.S" => Some(Self::Fcvths),
+            "FCVT.D.H" => Some(Self::Fcvtdh),
+            "FCVT.H.D" => Some(Self::Fcvthd),
+            "FCVT.Q.H" => Some(Self::Fcvtqh),
+            "FCVT.H.Q" => Some(Self::Fcvthq),
+            "FCVT.H.W" => Some(Self::Fcvthw),
+            "FCVT.H.WU" => Some(Self::Fcvthwu),
+            "FCVT.H.L" => Some(Self::Fcvthl),
+            "FCVT.H.LU" => Some(Self::Fcvthlu),
+            "FCVT.W.H" => Some(Self::Fcvtwh),
+            "FCVT.WU.H" => Some(Self::Fcvtwuh),
+            "FCVT.L.H" => Some(Self::Fcvtlh),
+            "FCVT.LU.H" => Some(Self::Fcvtluh),
+            "FMV.X.H" => Some(Self::Fmvxh),
+            "FMV.H.X" => Some(Self::Fmvhx),
+            "FLH" => Some(Self::Flh),
+            "FSH" => Some(Self::Fsh),
             "FADD.S" => Some(Self::Fadds),
             "FSUB.S" => Some(Self::Fsubs),
             "FMUL.S" => Some(Self::Fmuls),
@@ -390,11 +424,47 @@ mod tests {
     use super::OpCode;
 
     #[test]
-    fn test_half_precision_add_and_sub_opcodes() {
-        let fadd = OpCode::from_str("fadd.h").expect("fadd.h should be recognized");
-        let fsub = OpCode::from_str("fsub.h").expect("fsub.h should be recognized");
+    fn test_half_precision_opcodes() {
+        let cases = [
+            ("fadd.h", "0000010"),
+            ("fsub.h", "0000110"),
+            ("fmul.h", "0001010"),
+            ("fdiv.h", "0001110"),
+            ("fsqrt.h", "0101110"),
+            ("fmadd.h", "0000010"),
+            ("fmsub.h", "0000010"),
+            ("fnmsub.h", "0000010"),
+            ("fnmadd.h", "0000010"),
+            ("fsgnj.h", "0010010"),
+            ("fsgnjn.h", "0010010"),
+            ("fsgnjx.h", "0010010"),
+            ("fmin.h", "0010110"),
+            ("fmax.h", "0010110"),
+            ("feq.h", "1010010"),
+            ("flt.h", "1010010"),
+            ("fle.h", "1010010"),
+            ("fclass.h", "1110010"),
+            ("fcvt.s.h", "0100000"),
+            ("fcvt.h.s", "0100010"),
+            ("fcvt.d.h", "0100001"),
+            ("fcvt.h.d", "0100010"),
+            ("fcvt.q.h", "0100011"),
+            ("fcvt.h.q", "0100010"),
+            ("fcvt.h.w", "1101010"),
+            ("fcvt.h.wu", "1101010"),
+            ("fcvt.h.l", "1101010"),
+            ("fcvt.h.lu", "1101010"),
+            ("fcvt.w.h", "1100010"),
+            ("fcvt.wu.h", "1100010"),
+            ("fcvt.l.h", "1100010"),
+            ("fcvt.lu.h", "1100010"),
+            ("fmv.x.h", "1110010"),
+            ("fmv.h.x", "1111010"),
+        ];
 
-        assert_eq!(fadd.get_funct7_str().unwrap(), "0000010");
-        assert_eq!(fsub.get_funct7_str().unwrap(), "0000110");
+        for (name, expected_funct7) in cases {
+            let opcode = OpCode::from_str(name).unwrap_or_else(|| panic!("{name} should be recognized"));
+            assert_eq!(opcode.get_funct7_str().unwrap(), expected_funct7, "{name}");
+        }
     }
 }

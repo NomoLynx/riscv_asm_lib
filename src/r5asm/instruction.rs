@@ -1465,19 +1465,45 @@ impl Instruction {
     pub (crate) fn get_alternative_r2_value(&self) -> Option<u32> {
         let op = OpCode::from_str(&self.name)?;
         match op {
+            OpCode::Fsqrts |
+            OpCode::Fsqrtd |
+            OpCode::Fsqrth |
+            OpCode::Fclasss |
+            OpCode::Fclassd |
+            OpCode::Fclassh |
+            OpCode::Fmvxw |
+            OpCode::Fmvwx |
+            OpCode::Fmvxd |
+            OpCode::Fmvdx |
+            OpCode::Fmvxh |
+            OpCode::Fmvhx |
+            OpCode::Fcvths |
+            OpCode::Fcvthw |
+            OpCode::Fcvtwh => Some(0b0000_0),
             OpCode::Fcvtsd |
             OpCode::Fcvtwus |
             OpCode::Fcvtwud |
             OpCode::Fcvtdwu |
-            OpCode::Fcvtswu => Some(0b0000_1),
+            OpCode::Fcvtswu |
+            OpCode::Fcvtwuh |
+            OpCode::Fcvthd |
+            OpCode::Fcvthwu => Some(0b0000_1),
             OpCode::Fcvtdl |
             OpCode::Fcvtld |
             OpCode::Fcvtls |
-            OpCode::Fcvtsl => Some(0b000_10),
+            OpCode::Fcvtsl |
+            OpCode::Fcvtsh |
+            OpCode::Fcvtdh |
+            OpCode::Fcvtqh |
+            OpCode::Fcvtlh |
+            OpCode::Fcvthl => Some(0b000_10),
             OpCode::Fcvtlus |
             OpCode::Fcvtslu |
             OpCode::Fcvtlud |
-            OpCode::Fcvtdlu => Some(0b000_11),
+            OpCode::Fcvtdlu |
+            OpCode::Fcvtluh |
+            OpCode::Fcvthlu |
+            OpCode::Fcvthq => Some(0b000_11),
             _ => None,
         }
     }
