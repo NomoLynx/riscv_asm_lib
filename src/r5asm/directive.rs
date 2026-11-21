@@ -415,6 +415,7 @@ impl Directive {
                 Some(MachineCode::new_bytes(data))
             }
             DirectiveName::TwoByte |
+            DirectiveName::Half |
             DirectiveName::Short => {
                 let data = self.parameters.iter()
                                                         .map(|x: &String| { get_u64_from_str(x).unwrap() as u16} )
