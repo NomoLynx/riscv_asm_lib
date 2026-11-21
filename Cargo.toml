@@ -12,8 +12,8 @@ core_utils = { path = "../core_utils" }
 parser_lib = { path = "../parser_lib" }
 rust_macro = { path = "../rust_macro" }
 rust_macro_internal = { path = "../rust_macro_internal" }
-pest = "*"
-pest_derive = { version = "*", features = ["grammar-extras"] }
+pest = "=2.8.2"
+pest_derive = { version = "=2.8.2", features = ["grammar-extras"] }
 chrono = "*"
 
 # template for code generation
