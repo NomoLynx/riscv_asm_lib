@@ -504,6 +504,7 @@ mod tests {
             "feqh.s",
             "flth.s",
             "fleh.s",
+            "fhalf_support.s",
         ];
 
         for fixture in fixtures {

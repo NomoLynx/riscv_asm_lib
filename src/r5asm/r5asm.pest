@@ -359,17 +359,18 @@ rvf_instructions = {
 
 rvf_move_incs = { (^"fmv.h.x" | ^"fmv.s.x" | ^"fmv.w.x" | ^"fmv.x.h" | ^"fmv.x.s" | ^"fmv.x.w" ) }
 rvf_convert_incs = @{ 
-    ^"fcvt." ~ hsdq ~ (^".wu" | ^".w") |
-    ^"fcvt." ~ (^"wu" | ^"w") ~ "." ~ hsdq
+    ^"fcvt." ~ hsdq ~ (^".wu" | ^".w" | ^".lu" | ^".l") |
+    ^"fcvt." ~ (^"wu" | ^"w" | ^"lu" | ^"l") ~ "." ~ hsdq |
+    ^"fcvt." ~ hsdq ~ "." ~ hsdq
 }
-rvf_load_store_incs = @{ (^"fl" | ^"fs") ~ wdq }
+rvf_load_store_incs = @{ (^"fl" | ^"fs") ~ hwdq }
 rvf_load_arithemtic_incs = @{ (^"fadd." | ^"fsub." | ^"fmul." | ^"fdiv.") ~ hsdq }
 rvf_load_arithemtic_2reg_incs = @{ ^"fsqrt." ~ hsdq }
 rvf_mul_add_incs = @{ (^"fmadd." | ^"fnmadd." | ^"fmsub." | ^"fnmsub.") ~ hsdq }
 rvf_sign_inject_incs = @{ (^"fsgnjx." | ^"fsgnjn." | ^"fsgnj.") ~ hsdq }
 rvf_min_max_incs = @{ (^"fmin." | ^"fmax.") ~ hsdq }
 rvf_compare_incs = @{ (^"feq." | ^"fle." | ^"flt.") ~ hsdq }
-rvf_categorization_incs = @{ ^"fclass." ~ sdq }
+rvf_categorization_incs = @{ ^"fclass." ~ hsdq }
 
 rvf64_128_instructions = {
     #inc_name = rvf64_128_move_incs ~ rd ~ "," ~ rs1 |              //move
@@ -421,6 +422,7 @@ v_mask_policy = _{ ^"ma" | ^"mu" }
 sdq = _{ ^"s" | ^"d" | ^"q" }
 hsdq = _{ ^"h" | ^"s" | ^"d" | ^"q" }
 wdq = _{ ^"w" | ^"d" | ^"q" }
+hwdq = _{ ^"h" | ^"w" | ^"d" | ^"q" }
 
 pseudoinstructions = {
     basic_pseudoinstructions |   //add extra layer to save the .rs code effort 

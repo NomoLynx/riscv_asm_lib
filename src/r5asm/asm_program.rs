@@ -1505,6 +1505,32 @@ impl AsmProgram {
         use super::*;
 
         #[test]
+        fn data_half_emits_little_endian_16_bit_values() {
+            let mut config = CodeGenConfiguration::default();
+            let input = ".data\n\
+    .align 1\n\
+    operands:\n\
+    .half 0x3c00\n\
+    .half 0\n\
+    .half 0xffff\n";
+
+            let mut program = crate::r5asm::assembler::parse_asm(input, &mut config)
+                .expect("program should parse");
+            program.second_round(&mut config).expect("second round should pass");
+            program.third_round().expect("third round should pass");
+
+            let data_machine_codes = program
+                .get_machine_code_from_data(SectionType::Data)
+                .expect("data section should generate machine code");
+            let data_bytes = data_machine_codes
+                .into_iter()
+                .flat_map(|x| x.to_vec())
+                .collect::<Vec<_>>();
+
+            assert_eq!(data_bytes, vec![0x00, 0x3c, 0x00, 0x00, 0xff, 0xff]);
+        }
+
+        #[test]
         fn data_word_resolves_text_function_label_address() {
             let mut config = CodeGenConfiguration::default();
             let input = ".text\n\
