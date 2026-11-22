@@ -1480,6 +1480,8 @@ impl Instruction {
             OpCode::Fcvths |
             OpCode::Fcvthw |
             OpCode::Fcvtwh => Some(0b0000_0),
+            OpCode::Fcvtbf16s => Some(0b0100_0),
+            OpCode::Fcvtsbf16 => Some(0b0011_0),
             OpCode::Fcvtsd |
             OpCode::Fcvtwus |
             OpCode::Fcvtwud |

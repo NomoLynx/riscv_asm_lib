@@ -75,6 +75,28 @@ mod tests {
     }
 
     #[test]
+    fn test_bfloat16_conversions_use_zfbfmin_extension() {
+        let mut config = CodeGenConfiguration::default();
+
+        for code in [
+            "fcvt.bf16.s fa0, fa1",
+            "fcvt.s.bf16 fa0, fa1",
+        ] {
+            let instructions = Instruction::from_string(code, &mut config)
+                .expect("BFloat16 conversion should parse");
+            let inc = instructions
+                .first()
+                .expect("one parsed BFloat16 conversion should be returned");
+
+            assert_eq!(
+                InstructionRegisterMeta::get_inc_extension(inc),
+                vec!["zfbfmin".to_string()],
+                "unexpected extension for `{code}`"
+            );
+        }
+    }
+
+    #[test]
     fn test_half_precision_arithmetic_uses_zfh_extension() {
         let mut config = CodeGenConfiguration::default();
 
@@ -133,6 +155,8 @@ mod tests {
     #[test]
     fn test_half_precision_conversion_selectors() {
         let cases = [
+            ("fcvt.bf16.s fa0, fa1", 6),
+            ("fcvt.s.bf16 fa0, fa1", 6),
             ("fcvt.s.h fa0, fa1", 2),
             ("fcvt.h.s fa0, fa1", 0),
             ("fcvt.d.h fa0, fa1", 2),

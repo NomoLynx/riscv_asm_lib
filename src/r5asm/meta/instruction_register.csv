@@ -180,6 +180,8 @@ fle.h,true,false,false,,zfh
 fclass.h,true,false,false,,zfh
 fcvt.s.h,true,false,false,,zfh
 fcvt.h.s,true,false,false,,zfh
+fcvt.bf16.s,true,false,false,,zfbfmin
+fcvt.s.bf16,true,false,false,,zfbfmin
 fcvt.d.h,true,false,false,,zfh
 fcvt.h.d,true,false,false,,zfh
 fcvt.q.h,true,false,false,,zfh

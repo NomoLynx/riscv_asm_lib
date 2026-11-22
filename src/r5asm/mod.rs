@@ -120,6 +120,22 @@ pub (self) mod tests {
     }
 
     #[test]
+    fn test_bfloat16_conversion_encoding() {
+        let input = ".text\n\
+fcvt.bf16.s fa0, fa1\n\
+fcvt.s.bf16 fa2, fa3\n";
+
+        let params = build_snippet_parameters::BuildSnippetParameters::default();
+        let bytes = assembler::build_asm_snippet(input, &params)
+            .expect("BFloat16 conversion snippet should build");
+        let words = decode_u32_words(&bytes);
+
+        assert_eq!(words.len(), 2);
+        assert_eq!(words[0], 0x4465f553);
+        assert_eq!(words[1], 0x4066f653);
+    }
+
+    #[test]
     fn test_instruction_source_locations_are_preserved() {
         let mut config = code_gen_config::CodeGenConfiguration::default();
         let items = instruction::Instruction::from_string("addi x1, x2, 123", &mut config)

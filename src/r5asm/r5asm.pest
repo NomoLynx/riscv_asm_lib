@@ -359,6 +359,8 @@ rvf_instructions = {
 
 rvf_move_incs = { (^"fmv.h.x" | ^"fmv.s.x" | ^"fmv.w.x" | ^"fmv.x.h" | ^"fmv.x.s" | ^"fmv.x.w" ) }
 rvf_convert_incs = @{ 
+    ^"fcvt.bf16.s" |
+    ^"fcvt.s.bf16" |
     ^"fcvt." ~ hsdq ~ (^".wu" | ^".w" | ^".lu" | ^".l") |
     ^"fcvt." ~ (^"wu" | ^"w" | ^"lu" | ^"l") ~ "." ~ hsdq |
     ^"fcvt." ~ hsdq ~ "." ~ hsdq
