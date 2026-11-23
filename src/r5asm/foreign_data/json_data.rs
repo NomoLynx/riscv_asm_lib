@@ -5,6 +5,8 @@ use core_utils::number::*;
 
 pub type JsonObject = Object;
 
+/// Convert a JSON file at the given file path to assembly data code. JSON file generate data
+/// items **not type definition**.
 pub fn json_file_to_asm_data_code(file_path:&str) -> Result<String, JsonParseError> {
     // Placeholder implementation, replace with actual JSON parsing and ASM code generation
     let obj = parse_json_from_file(file_path)?;

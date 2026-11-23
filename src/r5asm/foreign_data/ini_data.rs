@@ -111,6 +111,8 @@ pub fn get_asm_data_code_from_ini(ini_file : &InitFile) -> String {
     r
 }
 
+/// Convert an ini file at the given file path to assembly data code. INI file generate data
+/// items **not type definition**.
 pub fn ini_file_to_asm_data_code(file_path:&str) -> Result<String, InitFileError> {
     match read_file_content(file_path) {
         Ok(input) => {
