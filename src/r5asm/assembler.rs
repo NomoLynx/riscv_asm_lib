@@ -312,13 +312,13 @@ pub fn build(file_path:&str) -> Result<(), AsmError> {
 
 /// build asm directly from an ini file. The ini drives both ASMSolution and CodeGenConfiguration.
 pub fn build_asm_solution_from_ini(ini_file_path:&str) -> Result<(), AsmError> {
-    let (solution, mut config) = load_asm_solution_from_ini(ini_file_path)?;
+    let (solution, mut config) = ASMSolution::form_init_file(ini_file_path)?;
     build_asm_solution(&solution, &mut config)
 }
 
 /// build asm from ini and optionally copy resulting elf to a requested output file name.
 pub fn build_asm_from_ini(ini_file_path:&str, output_file_name:&str) -> Result<(), AsmError> {
-    let (solution, mut config) = load_asm_solution_from_ini(ini_file_path)?;
+    let (solution, mut config) = ASMSolution::form_init_file(ini_file_path)?;
     build_asm_solution(&solution, &mut config)?;
 
     let generated_output = solution.get_output_file_name_with_linker_config(config.get_linker_config());
@@ -478,7 +478,7 @@ mod tests {
         );
         std::fs::write(&ini_path, ini).unwrap();
 
-        let (solution, config) = load_asm_solution_from_ini(ini_path.to_str().unwrap()).unwrap();
+        let (solution, config) = ASMSolution::form_init_file(ini_path.to_str().unwrap()).unwrap();
 
         assert_eq!(solution.get_source_files().len(), 2);
         assert!(solution.get_combined_source().contains("addi x1, x2, 1"));
