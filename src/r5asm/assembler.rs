@@ -288,6 +288,28 @@ pub fn build_asm_solution(asm_solution:&ASMSolution, config:&mut CodeGenConfigur
     Ok(())
 }
 
+/// Build an assembly file or solution based on the input file.
+/// If the input file is a single assembly source file, it will be built directly.
+/// If the input file is an ini file, it will be used to build an ASMSolution.
+pub fn build(file_path:&str) -> Result<(), AsmError> {
+    let exe_extension = "elf";
+    let extension = get_file_extension(file_path);
+    match extension {
+        Some("s") => {
+            let mut config = CodeGenConfiguration::default();
+            let output_file_name = replace_file_extension(file_path, exe_extension)
+                                                .display()
+                                                .to_string();
+            build_asm(file_path, &output_file_name, &mut config)
+        },
+        Some("ini") => build_asm_solution_from_ini(file_path),
+        _ => Err(AsmError::GeneralError(
+            (file!(), line!()).into(),
+            format!("unsupported file extension for '{}'", file_path),
+        )),
+    }
+}
+
 /// build asm directly from an ini file. The ini drives both ASMSolution and CodeGenConfiguration.
 pub fn build_asm_solution_from_ini(ini_file_path:&str) -> Result<(), AsmError> {
     let (solution, mut config) = load_asm_solution_from_ini(ini_file_path)?;
