@@ -5,7 +5,8 @@ use std::{
 
 use crate::r5asm::{asm_error::AsmError, code_gen_config::CodeGenConfiguration};
 pub use core_utils::file_object::FileObject;
-use core_utils::{filesystem::get_file_name_without_extension, number::get_u64_from_str, string::string_to_bool};
+use core_utils::string::*;
+use core_utils::{filesystem::get_file_name_without_extension, number::get_u64_from_str};
 use parser_lib::ini::{get_ini_properties, parse_ini_from_file};
 
 use super::linker_config::LinkerConfig;
@@ -276,17 +277,8 @@ impl ASMSolution {
         }
     }
 
-    fn parse_ini_u64(value: &str) -> u64 {
-        let r = get_u64_from_str(value).unwrap_or(0);
-        r
-    }
-
-    fn trim_ini_value(value: &str) -> String {
-        value.trim().trim_matches('"').to_string()
-    }
-
     fn resolve_ini_file_path(base_folder: &Path, raw_value: &str) -> String {
-        let path_value = Self::trim_ini_value(raw_value);
+        let path_value = remove_prefix_suffix_double_quote(raw_value);
         let candidate = PathBuf::from(&path_value);
         if candidate.is_absolute() {
             path_value
@@ -414,7 +406,7 @@ impl ASMSolution {
         if let Some(value) = virtual_address {
             config
                 .get_linker_config_mut()
-                .set_virutual_address_start(Self::parse_ini_u64(value));
+                .set_virutual_address_start(get_u64_from_str(value).unwrap_or(0));
         }
 
         if let Some(value) = properties
