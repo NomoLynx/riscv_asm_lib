@@ -2842,7 +2842,18 @@ impl GenerateCode for Instruction {
     fn generate_code_string(&self) -> String {
         let mut code = format!("{} ", self.name);
 
-        if self.name == "sw" || self.name == "lw" {
+        let is_vector = self.inc_extensions_and_type == BasicInstructionExtensions::RvVInstructions;
+        let is_vector_memory = is_vector && self.name.ends_with(".v")
+            && self.r2_name.is_none() && self.r3_name.is_none() && self.imm.is_none()
+            && (super::vector_incs::vector_pest::parse_vload_kind(&self.name).is_some()
+                || super::vector_incs::vector_pest::parse_vstore_kind(&self.name).is_some());
+
+        if is_vector_memory {
+            code = format!("{code}{}, ({})",
+                option_to_string2(self.r0_name.as_ref(), "", ""),
+                option_to_string2(self.r1_name.as_ref(), "", ""));
+        }
+        else if self.name == "sw" || self.name == "lw" {
             if let Some(rel_fun) = self.get_rel_fun() {
                 code = format!("{code} {}, {rel_fun}({})({})", 
                     option_to_string2(self.r0_name.as_ref(), "", ""), 
@@ -2876,6 +2887,13 @@ impl GenerateCode for Instruction {
             }
         }
         
+        if is_vector {
+            if let Some(option) = self.option.as_ref() {
+                code.push_str(", ");
+                code.push_str(option);
+            }
+        }
+
         code
     }
 }
@@ -2911,5 +2929,40 @@ impl Eq for Instruction {
 impl Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.generate_code_string())
+    }
+}
+
+#[cfg(test)]
+mod vector_serialization_tests {
+    use super::*;
+    use crate::r5asm::vector_incs::vector_emitter::emit_vector_instruction;
+
+    #[test]
+    fn vector_assembly_round_trip_preserves_configuration_and_memory_operands() {
+        let mut config = CodeGenConfiguration::default();
+        let registers = Register::new();
+        for source in [
+            "vsetvli t4, t3, e32, m1, ta, ma",
+            "vsetivli t4, 5, e32, m1, tu, mu",
+            "vle32.v v8, (t0)",
+            "vadd.vv v10, v8, v9",
+            "vadd.vv v10, v8, v9, v0.t",
+            "vse32.v v10, (t2)",
+        ] {
+            let original = Instruction::from_string(source, &mut config)
+                .expect("parse original vector instruction");
+            let rendered = original[0].generate_code_string();
+            let reparsed = Instruction::from_string(&rendered, &mut config)
+                .unwrap_or_else(|error| panic!("cannot reparse '{rendered}': {error:?}"));
+            assert_eq!(original[0].option, reparsed[0].option, "{source}");
+            let original_bytes = emit_vector_instruction(&original[0], &registers, 0)
+                .expect("encode original instruction")[0].to_vec();
+            let reparsed_bytes = emit_vector_instruction(&reparsed[0], &registers, 0)
+                .expect("encode reparsed instruction")[0].to_vec();
+            assert_eq!(original_bytes, reparsed_bytes, "{source}");
+            if source.contains('(') {
+                assert!(rendered.contains('('), "{rendered}");
+            }
+        }
     }
 }
