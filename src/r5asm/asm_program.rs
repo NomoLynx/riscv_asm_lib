@@ -1163,7 +1163,7 @@ impl AsmProgram {
         self.generate_debug_asm_code(config)?;
 
         let elf_file = self.generate_non_dynamic_elf(code_bin, &segment_headers, config)?;
-        debug_string(format!("No external symbol found, generate a non-dynamic elf file\r\n"));
+        // debug_string(format!("No external symbol found, generate a non-dynamic elf file\r\n"));
 
         Ok(elf_file.to_bytes())
     }

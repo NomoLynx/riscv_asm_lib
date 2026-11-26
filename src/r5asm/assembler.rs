@@ -167,7 +167,7 @@ pub fn build(file_path:&str) -> Result<(), AsmError> {
                                                 .to_string();
             build_asm(file_path, &output_file_name, &mut config)
         },
-        Some("ini") => build_asm_solution_from_ini(file_path),
+        Some("rvsln") => build_asm_solution_from_ini(file_path),
         _ => Err(AsmError::GeneralError(
             (file!(), line!()).into(),
             format!("unsupported file extension for '{}'", file_path),
