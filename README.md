@@ -29,6 +29,12 @@ The current codebase includes the following updates and fixes:
 - Support `Zba`, `Zbb`, `Zbs`, `F`, `D`, and main integer/CSR instruction families.
 - Expose a C-friendly crate interface for embedding from native tooling.
 
+Floating-point conversions accept the legal rounding options `rne`, `rtz`,
+`rdn`, `rup`, `rmm` and `dyn`. Atomic/vector options such as `aq`, `aqrel`,
+`rel` and `v0.t` are not rounding modes and are rejected on conversions rather
+than silently using the default encoding. Existing two-operand conversion
+forms retain their previous behavior.
+
 ---
 
 ## Quick start
