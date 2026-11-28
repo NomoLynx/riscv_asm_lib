@@ -225,6 +225,10 @@ impl AsmProgram {
 
     /// perform replace equal value, pseudo code to real inc, and replace label in jal
     pub (crate) fn second_round(&mut self, config:&mut CodeGenConfiguration) -> Result<(), AsmError> {
+        self.second_round_with_compact(config, unsafe { OPTIMIZE_TO_COMPACT_CODE })
+    }
+
+    fn second_round_with_compact(&mut self, config:&mut CodeGenConfiguration, optimize_compact:bool) -> Result<(), AsmError> {
         let equals = self.get_equals();
         for section in self.sections.iter_mut() {
             if section.get_section_type() == SectionType::Text {
@@ -236,22 +240,21 @@ impl AsmProgram {
                     //replace the equ value
                     Self::replace_equ(&mut item, &equals, config)?;
 
-                    //make pseudo code to real inc
-                    if item.is_pseodu_inc() {
-                        let new_items = Self::get_inc_from_pseduo(&item)?;
-                        new_item_list.extend(new_items);
-                    }
-                    else {
-                        if unsafe { OPTIMIZE_TO_COMPACT_CODE } {
-                            if let Some(inc) = item.get_inc() {
-                                if let Some(new_inc) = inc.convert_to_compact() {
-                                    item.set_inc(new_inc);
+                    let mut expanded = if item.is_pseodu_inc() {
+                        Self::get_inc_from_pseduo(&item)?
+                    } else {
+                        vec![item]
+                    };
+                    if optimize_compact {
+                        for expanded_item in &mut expanded {
+                            if let Some(inc) = expanded_item.get_inc() {
+                                if let Some(new_inc) = inc.convert_to_compact_for_target(*config.get_build_target()) {
+                                    expanded_item.set_inc(new_inc);
                                 }
                             }
                         }
-
-                        new_item_list.push(item);
                     }
+                    new_item_list.extend(expanded);
                 }
 
                 section.set_all_items(new_item_list);
@@ -763,7 +766,7 @@ impl AsmProgram {
                                          .collect::<Vec<_>>();
         for section in &text_sections {
             for inc in section.get_instructions() {
-                let machine_codes = self.get_machine_code_list(inc, &regs, &labels)?;
+                let machine_codes = self.get_machine_code_list_for_target(inc, &regs, &labels, *config.get_build_target())?;
                 let machine_code_str = machine_codes.iter().map(|x| format!("{v:?}", v=x.get_code_data())).collect::<Vec<_>>();
                 let external_label_str = if inc.get_external_symbol().is_some() { inc.get_external_symbol().unwrap().to_string() } else { String::new() };
                 let line = format!("0x{:X}: {}\t\t# {} {} imm/offset = {}", 
@@ -938,6 +941,18 @@ impl AsmProgram {
         }
     }
 
+    fn set_compact_elf_flag(&self, elf_file:&mut ElfFile) -> Result<(), AsmError> {
+        for item in self.get_text_section_items() {
+            if let Some(inc) = item.get_inc() {
+                if inc.is_generate && inc.get_op_code()?.is_compact_inc() {
+                    elf_file.header.set_e_flags(elf_file.header.get_e_flags() | 1);
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// generate non-dynamic elf file
     fn generate_non_dynamic_elf(&self, code_bin:TextSection, segment_headers:&SegmentHeaderList, config:&mut CodeGenConfiguration) -> Result<ElfFile, AsmError> {
         type ELFDataSection = super::elf_section::DataSection;
@@ -948,6 +963,7 @@ impl AsmProgram {
 
         // conslidate all data into byte vec
         let mut elf_file = ElfFile::new();
+        self.set_compact_elf_flag(&mut elf_file)?;
         elf_file.set_entry_point(self.get_entry_address2()? as u64);
         let text_segment = & segment_headers[SectionType::Text];
         let data_segment = & segment_headers[SectionType::Data];
@@ -993,6 +1009,7 @@ impl AsmProgram {
 
         // conslidate all data into byte vec
         let mut elf_file = ElfFile::new();
+        self.set_compact_elf_flag(&mut elf_file)?;
         let mut section_structure = ElfSectionStructure::default();
         let linker_config = config.get_linker_config();
 
@@ -1144,7 +1161,7 @@ impl AsmProgram {
             dynamic_structure.update_global_function_symbol(&symbol_name, offset as u64, size);
         }
 
-        let code_bin = self.get_code_bin()?;
+        let code_bin = self.get_code_bin(*config.get_build_target())?;
         self.generate_debug_asm_code(config)?;
 
         dynamic_structure.enrich_symbols(&segment_headers);
@@ -1159,7 +1176,7 @@ impl AsmProgram {
         self.update_label_virtual_address(None)?;
         self.refresh_label_tables();
 
-        let code_bin = self.get_code_bin()?;
+        let code_bin = self.get_code_bin(*config.get_build_target())?;
         self.generate_debug_asm_code(config)?;
 
         let elf_file = self.generate_non_dynamic_elf(code_bin, &segment_headers, config)?;
@@ -1177,14 +1194,14 @@ impl AsmProgram {
         }
     }
 
-    fn get_code_bin(&self) -> Result<TextSection, AsmError> {
+    fn get_code_bin(&self, build_target:u8) -> Result<TextSection, AsmError> {
         let mut code_bin = Vec::default();
         let regs = Register::new();
         let labels = self.get_labels()?;
 
         for section in self.get_txt_sections() {
             for inc in section.get_instructions() {                
-                let mut machine_codes = self.get_machine_code_list(inc, &regs, &labels)?;
+                let mut machine_codes = self.get_machine_code_list_for_target(inc, &regs, &labels, build_target)?;
                 code_bin.append(&mut machine_codes)
             }
         }
@@ -1266,6 +1283,10 @@ impl AsmProgram {
     }
 
     pub fn get_machine_code_list(&self, item:&SectionItem2, regs:&Register, labels:&LabelTable) -> Result<Vec<MachineCode>, AsmError> {
+        self.get_machine_code_list_for_target(item, regs, labels, 8)
+    }
+
+    pub fn get_machine_code_list_for_target(&self, item:&SectionItem2, regs:&Register, labels:&LabelTable, build_target:u8) -> Result<Vec<MachineCode>, AsmError> {
         let inc = item.get_inc().unwrap();
         let inc_offset = item.get_offset();
 
@@ -1462,7 +1483,7 @@ impl AsmProgram {
                 Ok(r)
             }
             InstructionTypes::COMPACT => {
-                let r = get_machine_code_from_compact_inc(inc, inc_offset, regs)?;
+                let r = get_machine_code_from_compact_inc(inc, inc_offset, regs, build_target)?;
                 Ok([r].to_vec())
             }
             InstructionTypes::UnKnown => {
@@ -1503,6 +1524,62 @@ impl AsmProgram {
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn compact_optimization_preserves_default_and_mixed_width_labels() {
+            let source = ".text\n_start:\nli x31, 7\nadd x8, x0, x31\nbeq x8, x0, done\naddi x8, x8, 1\ndone:\necall\n";
+            for enabled in [false, true] {
+                let mut config = CodeGenConfiguration::default();
+                let mut program = crate::r5asm::assembler::parse_asm(source, &mut config).unwrap();
+                program.second_round_with_compact(&mut config, enabled).unwrap();
+                program.update_section(SectionType::Text, 0);
+                program.update_label_virtual_address(None).unwrap();
+                let labels = program.get_labels().unwrap();
+                let bytes: Vec<u8> = program.get_text_section_items().into_iter()
+                    .filter(|item| item.is_inc())
+                    .flat_map(|item| program.get_machine_code_list(item, &Register::new(), &labels).unwrap())
+                    .flat_map(|machine| machine.to_vec())
+                    .collect();
+                if enabled {
+                    assert_eq!(bytes.len(), 14);
+                    assert_eq!(&bytes[0..4], &[0x9d, 0x4f, 0x7e, 0x84]);
+                    assert_eq!(&bytes[4..8], &0x0004_0363u32.to_le_bytes());
+                    assert_eq!(labels.get("done").unwrap().get_offset(), 10);
+                } else {
+                    assert_eq!(bytes.len(), 20);
+                    assert_eq!(&bytes[8..12], &0x0004_0463u32.to_le_bytes());
+                    assert_eq!(labels.get("done").unwrap().get_offset(), 16);
+                }
+            }
+        }
+
+        #[test]
+        fn compact_optimization_uses_configured_width_through_the_full_pass() {
+            let source = ".text\n_start:\njal x1, 6\nflw f8, 4(x9)\nfsw f8, 4(x9)\n";
+            for target in [4, 8] {
+                let mut config = CodeGenConfiguration::default();
+                config.set_build_target(target);
+                config.get_linker_config_mut().set_xlen(target * 8);
+                let mut program = crate::r5asm::assembler::parse_asm(source, &mut config).unwrap();
+                program.second_round_with_compact(&mut config, true).unwrap();
+                program.update_section(SectionType::Text, 0);
+                program.update_label_virtual_address(None).unwrap();
+                let labels = program.get_labels().unwrap();
+                let instructions: Vec<_> = program.get_text_section_items().into_iter()
+                    .filter(|item| item.is_inc()).collect();
+                let names: Vec<_> = instructions.iter().map(|item| item.get_inc().unwrap().name.as_str()).collect();
+                let bytes: Vec<_> = instructions.into_iter()
+                    .flat_map(|item| program.get_machine_code_list_for_target(item, &Register::new(), &labels, target).unwrap())
+                    .flat_map(|machine| machine.to_vec()).collect();
+                if target == 4 {
+                    assert_eq!(names, ["c.jal", "c.flw", "c.fsw"]);
+                    assert_eq!(bytes.len(), 6);
+                } else {
+                    assert_eq!(names, ["jal", "flw", "fsw"]);
+                    assert_eq!(bytes.len(), 12);
+                }
+            }
+        }
 
         #[test]
         fn data_half_emits_little_endian_16_bit_values() {

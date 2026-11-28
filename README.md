@@ -183,6 +183,34 @@ This assembler supports a practical, project-oriented subset of the RISC-V instr
 - **CSR / privileged** — CSR access instructions (`csrrw`, `csrrs`, `csrrc`, `csrrwi`, `csrrsi`, `csrrci`) and privileged/system forms like `wfi`, `ecall`, `ebreak`, `eret`, `sfence.vm`, and related trap/interrupt helpers
 - **Pseudo-instructions** — expanded during the second-round assembler pass
 
+### Compact optimization
+
+The existing `r5asm::OPTIMIZE_TO_COMPACT_CODE` flag is opt-in and remains
+disabled by default. Set it before starting assembly, not concurrently with
+other builds. The pass checks RV32/RV64 operand legality and preserves byte
+offsets; missing Zc targets and relocation/symbolic control transfers are not
+silently substituted.
+
+See the [coverage audit and human-review missing-entry list](doc/compact-optimization-audit.md)
+for the metadata contract, limitations and validation boundaries. The public
+`Instruction::convert_to_compact_for_target` and
+`AsmProgram::get_machine_code_list_for_target` helpers accept build target
+4 (RV32) or 8 (RV64); their original no-target helpers retain the RV64 default.
+
+`cargo test --lib compact_` runs the focused host regressions. The
+`compact_native` example assembles the reviewed RV64 sources through this
+library into a new ELF without overwriting existing output:
+
+```powershell
+New-Item -ItemType Directory -Path .\target\compact-native -Force | Out-Null
+cargo run --example compact_native -- tests\compact_native.s target\compact-native\compact-on.elf on
+```
+
+Execute the ELF separately in QEMU and require guest exit 42 or 142. The
+general fixture also supports `off`; `compact_native_offsets.s` is a separate
+optimized-only literal-displacement fixture. The current upstream ELF writer
+is ELF64-only, so RV32 encoding checks are not RV32 runtime acceptance.
+
 ### Floating-point data directives
 
 - `.float` and `.double` directives are supported for data emission.

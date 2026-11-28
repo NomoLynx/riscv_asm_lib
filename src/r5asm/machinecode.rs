@@ -16,6 +16,10 @@ impl MachineCode {
         Self { code:MachineCodeData::new(code), offset }
     }
 
+    pub (crate) fn new_u16(code:u16, offset:usize) -> Self {
+        Self { code:MachineCodeData::Bytes(code.to_le_bytes().to_vec()), offset }
+    }
+
     pub (crate) fn from_string(machine_code_str:&str, offset:usize) -> Result<Self, AsmError> {
         if machine_code_str.chars().all(|x| x == '0' || x=='1') {
             let machine_code = u32::from_str_radix(machine_code_str, 2)
