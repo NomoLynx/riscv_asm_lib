@@ -1505,6 +1505,29 @@ impl AsmProgram {
         use super::*;
 
         #[test]
+        fn floating_conversion_rounding_modes_reach_instruction_bits() {
+            let mut config = CodeGenConfiguration::default();
+            for (mode, bits) in [
+                ("rne", 0), ("rtz", 1), ("rdn", 2),
+                ("rup", 3), ("rmm", 4), ("dyn", 7),
+            ] {
+                let source = format!(".text\n_start:\nfcvt.l.s x31, f30, {mode}\n");
+                let mut program = crate::r5asm::assembler::parse_asm(&source, &mut config)
+                    .expect("legal conversion rounding mode should parse");
+                program.second_round(&mut config).expect("second round should pass");
+                program.third_round().expect("third round should pass");
+                let codes: Vec<MachineCode> = program.get_code_bin()
+                    .expect("conversion should encode").into();
+                let bytes = codes.iter().flat_map(|code| code.to_vec()).collect::<Vec<_>>();
+                let expected = 0xc020_0053u32 | (30 << 15) | (bits << 12) | (31 << 7);
+                assert_eq!(bytes, expected.to_le_bytes(), "{mode}");
+            }
+            assert!(crate::r5asm::assembler::parse_asm(
+                ".text\n_start:\nfcvt.l.s x31, f30\n", &mut config
+            ).is_ok(), "the existing two-operand form must remain supported");
+        }
+
+        #[test]
         fn data_half_emits_little_endian_16_bit_values() {
             let mut config = CodeGenConfiguration::default();
             let input = ".data\n\

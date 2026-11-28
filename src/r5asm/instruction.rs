@@ -618,8 +618,14 @@ impl Instruction {
 
                         Ok([r].to_vec())
                     }
-                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::option, option)] => 
-                        Ok([Self::new_r0_r1_option(inc_name, inc_type, extention_type, p, p1, option)].to_vec()),
+                    [_, (Rule::registers, p), (Rule::registers, p1), (Rule::option, option)] => {
+                        let r = Self::new_r0_r1_option(inc_name, inc_type, extention_type, p, p1, option);
+                        if r.name.to_ascii_lowercase().starts_with("fcvt.") && r.get_option_value().is_none() {
+                            return Err(AsmError::GeneralError((file!(), line!()).into(),
+                                format!("{} requires a floating-point rounding option, not {}", r.name, option.as_str())));
+                        }
+                        Ok([r].to_vec())
+                    }
                     [_, (Rule::registers, p), (Rule::relocation_function, p2), (Rule::registers, p1)] |
                     [_, (Rule::registers, p), (Rule::registers, p1), (Rule::relocation_function, p2)] =>
                         Ok([Self::new_r0_r1_rel(inc_name, inc_type, extention_type, p, p1, p2)].to_vec()),
@@ -2963,6 +2969,28 @@ mod vector_serialization_tests {
             if source.contains('(') {
                 assert!(rendered.contains('('), "{rendered}");
             }
+        }
+
+    }
+}
+
+#[cfg(test)]
+mod conversion_option_tests {
+    use super::*;
+
+    #[test]
+    fn floating_conversions_reject_non_rounding_options() {
+        let mut config = CodeGenConfiguration::default();
+        for source in [
+            "fcvt.l.s x31, f30, aq",
+            "fcvt.l.s x31, f30, aqrel",
+            "fcvt.s.l f31, x30, rel",
+            "fcvt.d.l f31, x30, v0.t",
+        ] {
+            assert!(
+                Instruction::from_string(source, &mut config).is_err(),
+                "non-rounding conversion option was accepted: {source}"
+            );
         }
     }
 }
