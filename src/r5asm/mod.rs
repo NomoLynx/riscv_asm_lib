@@ -10,6 +10,8 @@ pub mod basic_instruction_extensions;
 pub mod register;
 pub mod directive;
 mod compact_inc;
+#[cfg(test)]
+mod compact_regression_tests;
 pub mod code_gen_config;
 pub mod asm_solution;
 pub mod assembler;

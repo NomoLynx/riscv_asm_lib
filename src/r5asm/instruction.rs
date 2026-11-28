@@ -636,6 +636,9 @@ impl Instruction {
                         Ok([Self::new_r0_imm(inc_name, inc_type, extention_type, p, p1)].to_vec()),
                     [_, (Rule::registers, p), (Rule::relocation_function, p1)] =>
                         Ok([Self::new_r0_rel(inc_name, inc_type, extention_type, p, p1)].to_vec()),
+                    [_, (Rule::integer, p)] | [_, (Rule::var_name, p)]
+                        if inc_type == InstructionTypes::COMPACT =>
+                        Ok([Self::new_imm(inc_name, inc_type, extention_type, p)].to_vec()),
                     [_] => 
                         Ok([Self::new(inc_name, inc_type, extention_type)].to_vec()),
                     [_, (Rule::registers, p), (Rule::option, option)] => 
@@ -652,6 +655,9 @@ impl Instruction {
             Rule::rvc_instructions => {
                 let rules = extension_inc.into_inner().map(|x| (x.as_rule(), x)).collect::<Vec<_>>();
                 match rules.as_slice() {
+                    [_, (Rule::registers, p), (Rule::integer, p1), (Rule::registers, p2)] |
+                    [_, (Rule::registers, p), (Rule::var_name, p1), (Rule::registers, p2)] =>
+                        Ok([Self::new_r0_r1_imm(inc_name, inc_type, extention_type, p, p2, p1)].to_vec()),
                     [_, (Rule::registers, p), (Rule::var_name, p1)] |
                     [_, (Rule::registers, p), (Rule::integer, p1)] => 
                         Ok([Self::new_r0_imm(inc_name, inc_type, extention_type, p, p1)].to_vec()),
@@ -2245,331 +2251,197 @@ impl Instruction {
     }
 
     pub fn convert_to_compact(&self) -> Option<Instruction> {
+        self.convert_to_compact_for_target(8)
+    }
+
+    /// Try a semantics-preserving C conversion for build_target 4 (RV32) or 8 (RV64).
+    pub fn convert_to_compact_for_target(&self, build_target:u8) -> Option<Instruction> {
+        use InstructionRegisterName::{Rd, Rs1, Rs2};
+        let op = self.get_op_code().ok()?;
+        if !op.has_compact_equ() || !matches!(build_target, 4 | 8)
+            || self.rel_fun.is_some() || self.option.is_some() || self.r3_name.is_some()
+        {
+            return None;
+        }
         let regs = Register::new();
-        let op_code = self.get_op_code().ok()?;
-        if op_code.has_compact_equ() {
-            match op_code {
-                OpCode::Lw => {
-                    if self.is_imm_value_within(7, 2)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.lwsp", 7, 2)
-                    }
-                    else if self.is_imm_value_within(6, 2)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.lw", 6, 2)
-                    }
-                    else {
-                        None
-                    }
+        let register_id = |name:&Option<String>, floating:bool| {
+            let name = name.as_ref()?;
+            let valid = if floating { Register::is_float_register_name(name) }
+                else { Register::is_integer_register_name(name) };
+            if valid { regs.get_register_value(Some(name)).ok() } else { None }
+        };
+        let floating = matches!(op, OpCode::Flw | OpCode::Fld | OpCode::Fsw | OpCode::Fsd);
+        let r0 = register_id(&self.r0_name, floating);
+        let r1 = register_id(&self.r1_name, false);
+        let r2 = register_id(&self.r2_name, false);
+        let prime = |id:Option<i32>| id.is_some_and(|id| (8..=15).contains(&id));
+        let nonzero = |id:Option<i32>| id.is_some_and(|id| (1..=31).contains(&id));
+        let imm = self.imm_to_i64().ok()?;
+        let signed6 = (-32..=31).contains(&imm);
+        let make = |name, r0, r1, imm| Some(self.compact_inc(name, r0, r1, imm));
+        match op {
+            OpCode::Lw | OpCode::Ld | OpCode::Flw | OpCode::Fld
+            | OpCode::Sw | OpCode::Sd | OpCode::Fsw | OpCode::Fsd => {
+                if (matches!(op, OpCode::Ld | OpCode::Sd) && build_target != 8)
+                    || (matches!(op, OpCode::Flw | OpCode::Fsw) && build_target != 4)
+                {
+                    return None;
                 }
-                OpCode::Ld => {
-                    if self.is_imm_value_within(8, 3)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.ldsp", 8, 3)
-                    }
-                    else if self.is_imm_value_within(7, 3)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.ld" ,7, 3)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Flw => {
-                    if self.is_imm_value_within(8, 3)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.flwsp",8, 3)
-                    }
-                    else if self.is_imm_value_within(6, 2)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.flw", 6, 2)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Fld => {
-                    if self.is_imm_value_within(8, 3)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.fldsp", 8, 3)
-                    }
-                    else if self.is_imm_value_within(7, 3)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.fld", 7, 3)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Sw => {
-                    if self.is_imm_value_within(7, 2)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.swsp", 7, 2)
-                    }
-                    else if self.is_imm_value_within(6, 2)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.sw", 6, 2)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Sd => {
-                    if self.is_imm_value_within(8, 3)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.sdsp", 8, 3)
-                    }
-                    else if self.is_imm_value_within(7, 3)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.sd", 7, 3)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Fsw => {
-                    if self.is_imm_value_within(7, 2)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.fswsp", 7, 2)
-                    }
-                    else if self.is_imm_value_within(6, 2)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.fsw", 6, 2)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Fsd => {
-                    if self.is_imm_value_within(8, 3)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 2 {
-                        self.create_compact_inc_from_current("c.fsdsp", 8, 3)
-                    }
-                    else if self.is_imm_value_within(7, 3)? && regs.is_compact_reg(self.r1_name.as_ref()) && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.fsd", 7, 3)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Jal => {
-                    if self.is_imm_value_within(1, 11)? && regs.get_register_value(self.r0_name.as_ref()).ok()? == 0 {
-                        self.create_compact_inc_from_current_only_imm("c.j", 1, 11)
-                    }
-                    else if self.is_imm_value_within(1, 11)? && regs.get_register_value(self.r0_name.as_ref()).ok()? == 1 {
-                        self.create_compact_inc_from_current_only_imm("c.jal", 1, 11)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Jalr => {
-                    if self.imm_to_u32().ok()? == 0 && regs.get_register_value(self.r0_name.as_ref()).ok()? == 0 {
-                        let c = BasicInstructionExtensions::CompactInstructions; 
-                        let (inc, ty) = Self::get_inc_and_inc_type("c.jr").ok()?;
-                        let mut r = Instruction::new(inc, ty, c);
-                        r.r0_name = self.r1_name.clone();
-                        r.set_imm(Some(format!("{}", 0).into()));
-                        Some(r)
-                    }
-                    else if self.imm_to_u32().ok()? == 0 && regs.get_register_value(self.r0_name.as_ref()).ok()? == 1 {
-                        let c = BasicInstructionExtensions::CompactInstructions; 
-                        let (inc, ty) = Self::get_inc_and_inc_type("c.jalr").ok()?;
-                        let mut r = Instruction::new(inc, ty, c);
-                        r.r0_name = self.r1_name.clone();
-                        r.set_imm(Some(format!("{}", 0).into()));
-                        Some(r)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Beq => {
-                    if self.is_imm_value_within(8, 1)? && regs.get_register_value(self.r0_name.as_ref()).ok()? == 0 && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current("c.beqz", 8, 1)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Bne => {
-                    if self.is_imm_value_within(8, 1)? && regs.get_register_value(self.r0_name.as_ref()).ok()? == 0 && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current("c.bnez", 8, 1)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Addi => {
-                    if self.is_imm_value_within(5, 0)? && regs.get_register_value(self.r1_name.as_ref()).ok()? == 0 {
-                        self.create_compact_inc_from_current("c.li", 5, 0)
-                    }
-                    else if self.is_imm_value_within(5, 0)? && self.is_r0_r1_same() {
-                        self.create_compact_inc_from_current("c.addi", 5, 0)
-                    }
-                    else if self.is_imm_value_within(9, 4)? && self.is_r0_r1_same() && regs.get_register_value(self.r0_name.as_ref()).ok()?==2 {
-                        self.create_compact_inc_from_current("c.addi16sp", 9, 4)
-                    }
-                    else if self.is_imm_value_within(9, 2)? && regs.get_register_value(self.r1_name.as_ref()).ok()?==2 && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current("c.addi4spn", 9, 2)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Addiw => {
-                    if self.is_imm_value_within(5, 0)? && self.is_r0_r1_same() {
-                        self.create_compact_inc_from_current("c.addiw", 5, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Lui => {
-                    if self.is_imm_value_within(17, 12)? {
-                        self.create_compact_inc_from_current("c.lui", 17, 12)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Slli => {
-                    if self.is_imm_value_within(5, 0)? && self.is_r0_r1_same() {
-                        self.create_compact_inc_from_current("c.slli", 5, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Srli => {
-                    if self.is_imm_value_within(5, 0)? && self.is_r0_r1_same() {
-                        self.create_compact_inc_from_current("c.srli", 5, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Andi => {
-                    if self.is_imm_value_within(5, 0)? && self.is_r0_r1_same() && regs.is_compact_reg(self.r0_name.as_ref()) {
-                        self.create_compact_inc_from_current("c.andi", 5, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Srai => {
-                    if self.is_imm_value_within(5, 0)? && self.is_r0_r1_same() {
-                        self.create_compact_inc_from_current("c.srai", 5, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Add => {
-                    if regs.get_register_value(self.r1_name.as_ref()).ok()? == 0 {
-                        self.create_compact_inc_from_current_2regs("c.add", 0, 0)
-                    }                    
-                    else {
-                        None
-                    }
-                }
-                OpCode::And => {
-                    if self.is_r0_r1_same() && regs.is_compact_reg(self.r0_name.as_ref()) && regs.is_compact_reg(self.r2_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.and", 0, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Or => {
-                    if self.is_r0_r1_same() && regs.is_compact_reg(self.r0_name.as_ref()) && regs.is_compact_reg(self.r2_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.or", 0, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Xor => {
-                    if self.is_r0_r1_same() && regs.is_compact_reg(self.r0_name.as_ref()) && regs.is_compact_reg(self.r2_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.xor", 0, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Sub => {
-                    if self.is_r0_r1_same() && regs.is_compact_reg(self.r0_name.as_ref()) && regs.is_compact_reg(self.r2_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.sub", 0, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Subw => {
-                    if self.is_r0_r1_same() && regs.is_compact_reg(self.r0_name.as_ref()) && regs.is_compact_reg(self.r2_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.subw", 0, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                OpCode::Addw => {
-                    if self.is_r0_r1_same() && regs.is_compact_reg(self.r0_name.as_ref()) && regs.is_compact_reg(self.r2_name.as_ref()) {
-                        self.create_compact_inc_from_current_2regs("c.addw", 0, 0)
-                    }
-                    else {
-                        None
-                    }
-                }
-                _ => {
+                let (stack, regular, scale) = match op {
+                    OpCode::Lw => ("c.lwsp", "c.lw", 4),
+                    OpCode::Ld => ("c.ldsp", "c.ld", 8),
+                    OpCode::Flw => ("c.flwsp", "c.flw", 4),
+                    OpCode::Fld => ("c.fldsp", "c.fld", 8),
+                    OpCode::Sw => ("c.swsp", "c.sw", 4),
+                    OpCode::Sd => ("c.sdsp", "c.sd", 8),
+                    OpCode::Fsw => ("c.fswsp", "c.fsw", 4),
+                    OpCode::Fsd => ("c.fsdsp", "c.fsd", 8),
+                    _ => unreachable!(),
+                };
+                if r0.is_none() || imm < 0 || imm % scale != 0
+                    || (matches!(op, OpCode::Lw | OpCode::Ld) && !nonzero(r0))
+                {
+                    None
+                } else if r1 == Some(2) && imm <= 63 * scale {
+                    make(stack, Some(Rd), None, Some(imm))
+                } else if prime(r0) && prime(r1) && imm <= 31 * scale {
+                    make(regular, Some(Rd), Some(Rs1), Some(imm))
+                } else {
                     None
                 }
             }
+            OpCode::Addi => {
+                if r0 == Some(0) && r1 == Some(0) && imm == 0 {
+                    make("c.nop", None, None, None)
+                } else if !nonzero(r0) {
+                    None
+                } else if r1 == Some(0) && signed6 {
+                    make("c.li", Some(Rd), None, Some(imm))
+                } else if imm == 0 && nonzero(r1) {
+                    make("c.mv", Some(Rd), Some(Rs1), None)
+                } else if r0 == r1 && signed6 && imm != 0 {
+                    make("c.addi", Some(Rd), None, Some(imm))
+                } else if r0 == Some(2) && r1 == Some(2) && imm != 0
+                    && (-512..=496).contains(&imm) && imm % 16 == 0
+                {
+                    make("c.addi16sp", Some(Rd), None, Some(imm))
+                } else if prime(r0) && r1 == Some(2) && (4..=1020).contains(&imm) && imm % 4 == 0 {
+                    make("c.addi4spn", Some(Rd), None, Some(imm))
+                } else {
+                    None
+                }
+            }
+            OpCode::Addiw if build_target == 8 && nonzero(r0) && r0 == r1 && signed6 =>
+                make("c.addiw", Some(Rd), None, Some(imm)),
+            OpCode::Lui if nonzero(r0) && r0 != Some(2) => {
+                let field = super::compact_inc::lui_immediate(imm)?;
+                make("c.lui", Some(Rd), None, Some(field))
+            }
+            OpCode::Slli | OpCode::Srli | OpCode::Srai if nonzero(r0) && r0 == r1 => {
+                // The scalar parser stores SRAI's funct bits with its shamt.
+                let shift = if op == OpCode::Srai { imm.checked_sub(0x400)? } else { imm };
+                let max_shift = i64::from(build_target) * 8 - 1;
+                if !(1..=max_shift).contains(&shift)
+                    || (op != OpCode::Slli && !prime(r0))
+                {
+                    return None;
+                }
+                let name = match op {
+                    OpCode::Slli => "c.slli",
+                    OpCode::Srli => "c.srli",
+                    _ => "c.srai",
+                };
+                make(name, Some(Rd), None, Some(shift))
+            }
+            OpCode::Andi if prime(r0) && r0 == r1 && signed6 =>
+                make("c.andi", Some(Rd), None, Some(imm)),
+            OpCode::Add if nonzero(r0) => {
+                if r1 == Some(0) && nonzero(r2) {
+                    make("c.mv", Some(Rd), Some(Rs2), None)
+                } else if r2 == Some(0) && nonzero(r1) {
+                    make("c.mv", Some(Rd), Some(Rs1), None)
+                } else if r0 == r1 && nonzero(r2) {
+                    make("c.add", Some(Rd), Some(Rs2), None)
+                } else if r0 == r2 && nonzero(r1) {
+                    make("c.add", Some(Rd), Some(Rs1), None)
+                } else {
+                    None
+                }
+            }
+            OpCode::And | OpCode::Or | OpCode::Xor | OpCode::Sub | OpCode::Addw | OpCode::Subw => {
+                if !prime(r0) || (matches!(op, OpCode::Addw | OpCode::Subw) && build_target != 8) {
+                    return None;
+                }
+                let source = if r0 == r1 && prime(r2) {
+                    Rs2
+                } else if r0 == r2 && prime(r1) && !matches!(op, OpCode::Sub | OpCode::Subw) {
+                    Rs1
+                } else {
+                    return None;
+                };
+                let name = match op {
+                    OpCode::And => "c.and",
+                    OpCode::Or => "c.or",
+                    OpCode::Xor => "c.xor",
+                    OpCode::Sub => "c.sub",
+                    OpCode::Addw => "c.addw",
+                    _ => "c.subw",
+                };
+                make(name, Some(Rd), Some(source), None)
+            }
+            OpCode::Jal if (-2048..=2046).contains(&imm) && imm % 2 == 0 => {
+                if r0 == Some(0) {
+                    make("c.j", None, None, Some(imm))
+                } else if r0 == Some(1) && build_target == 4 {
+                    make("c.jal", None, None, Some(imm))
+                } else {
+                    None
+                }
+            }
+            OpCode::Jalr if imm == 0 && nonzero(r1) => match r0 {
+                Some(0) => make("c.jr", Some(Rs1), None, None),
+                Some(1) => make("c.jalr", Some(Rs1), None, None),
+                _ => None,
+            },
+            OpCode::Beq | OpCode::Bne if (-256..=254).contains(&imm) && imm % 2 == 0 => {
+                let source = if prime(r0) && r1 == Some(0) {
+                    Rd
+                } else if r0 == Some(0) && prime(r1) {
+                    Rs1
+                } else {
+                    return None;
+                };
+                make(if op == OpCode::Beq { "c.beqz" } else { "c.bnez" }, Some(source), None, Some(imm))
+            }
+            OpCode::Ebreak => make("c.ebreak", None, None, None),
+            _ => None,
         }
-        else {
-            None
+    }
+
+    fn compact_inc(&self, name:&str, r0_source:Option<InstructionRegisterName>, r1_source:Option<InstructionRegisterName>, imm:Option<i64>) -> Instruction {
+        let operand = |source| match source {
+            Some(InstructionRegisterName::Rd | InstructionRegisterName::Rs0) =>
+                (self.r0_name.clone(), self.source_ranges.r0),
+            Some(InstructionRegisterName::Rs1) => (self.r1_name.clone(), self.source_ranges.r1),
+            Some(InstructionRegisterName::Rs2) => (self.r2_name.clone(), self.source_ranges.r2),
+            Some(InstructionRegisterName::Rs3) => (self.r3_name.clone(), self.source_ranges.r3),
+            None => (None, None),
+        };
+        let mut result = self.clone();
+        result.name = name.to_string();
+        result.inc_type = InstructionTypes::COMPACT;
+        result.inc_extensions_and_type = BasicInstructionExtensions::CompactInstructions;
+        (result.r0_name, result.source_ranges.r0) = operand(r0_source);
+        (result.r1_name, result.source_ranges.r1) = operand(r1_source);
+        result.r2_name = None;
+        result.r3_name = None;
+        result.source_ranges.r2 = None;
+        result.source_ranges.r3 = None;
+        result.imm = imm.map(|value| value.to_string().into());
+        if result.imm.is_none() {
+            result.source_ranges.imm = None;
         }
-    }
-
-    fn create_compact_inc_from_current_only_imm(&self, inc_name:&str, a:usize, b:usize) -> Option<Instruction> {
-        let c = BasicInstructionExtensions::CompactInstructions; 
-        let (inc, ty) = Self::get_inc_and_inc_type(inc_name).ok()?;
-        let mut r = Instruction::new(inc, ty, c);
-        r.set_imm( if a==b { None } 
-                else { Some(format!("{}", self.get_imm_value_within(a, b)?).into()) } );
-        Some(r)
-    }
-
-    fn create_compact_inc_from_current(&self, inc_name:&str, a:usize, b:usize) -> Option<Instruction> {
-        let mut r = self.create_compact_inc_from_current_only_imm(inc_name, a, b)?;
-        r.r0_name = self.r0_name.clone();
-        Some(r)
-    }
-
-    fn create_compact_inc_from_current_2regs(&self, inc_name:&str, a:usize, b:usize) -> Option<Instruction> {
-        let mut r = self.create_compact_inc_from_current(inc_name, a, b)?;
-        r.r1_name = self.r1_name.clone();
-        Some(r)
-    }
-
-    fn get_imm_value_within(&self, a:usize, b:usize) -> Option<u32> {
-        let (high, low) = if a > b { (a, b) } else { (b, a) };
-
-        let v = self.imm_to_u32().ok()?;
-
-        // Create the mask with bits from a to b set to 1
-        let mask = ((1u32 << (high - low + 1)) - 1) << low;
-    
-        // Apply the mask and shift right by 'a' to get the new number
-        let r = (v & mask) >> low;
-        Some(r)
-    }
-
-    fn is_imm_value_within(&self, a:usize, b:usize) -> Option<bool> {
-        let (high, low) = if a > b { (a, b) } else { (b, a) };
-        let v = self.imm_to_u32().ok()?;
-
-        // if v is 0, then it is true
-        if v == 0 {
-            return Some(true)
-        }
-        else {
-            let mask = ((1u32 << (high - low + 1)) - 1) << low;
-            let r = v & mask != 0 && (v & !mask) ==0;
-            Some(r)
-        }
-    }
-
-    fn is_r0_r1_same(&self) -> bool {
-        match (self.r0_name.as_ref(), self.r1_name.as_ref()) {
-            (Some(a), Some(b)) => a == b,
-            _ => false,
-        }
+        result
     }
 
     pub fn get_r0(&self) -> Option<&String> {

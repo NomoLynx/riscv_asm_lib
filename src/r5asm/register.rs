@@ -464,6 +464,17 @@ impl Register {
         self.from_abi.contains_key(s.as_str())
     }
 
+    pub (crate) fn is_integer_register_name<S: AsRef<str>>(name:S) -> bool {
+        let normalized = name.as_ref().trim().to_ascii_uppercase();
+        (normalized.starts_with('X') && Self::has_numeric_suffix(&normalized, 1))
+            || matches!(normalized.as_str(),
+                "ZERO" | "RA" | "SP" | "GP" | "TP" | "FP"
+                | "T0" | "T1" | "T2" | "T3" | "T4" | "T5" | "T6"
+                | "S0" | "S1" | "S2" | "S3" | "S4" | "S5" | "S6"
+                | "S7" | "S8" | "S9" | "S10" | "S11"
+                | "A0" | "A1" | "A2" | "A3" | "A4" | "A5" | "A6" | "A7")
+    }
+
     /// Returns `true` if `name` refers to a floating-point register
     /// (F0–F31, FT0–FT11, FS0–FS11, FA0–FA7).
     pub fn is_float_register_name<S>(name: S) -> bool

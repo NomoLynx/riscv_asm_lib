@@ -624,7 +624,7 @@ pub fn build_asm_snippet(input:&str, parameters:&BuildSnippetParameters) -> Resu
             let mut code_bin = Vec::default();         
             for section in ast.get_txt_sections() {
                 for inc in section.get_instructions() {                
-                    let machine_codes = ast.get_machine_code_list(inc, &regs, &labels)?;
+                    let machine_codes = ast.get_machine_code_list_for_target(inc, &regs, &labels, *config.get_build_target())?;
                     let bin = machine_codes.iter().map(|x| x.to_vec()).flatten().collect::<Vec<_>>();
                     code_bin.extend(bin);
                 }
